@@ -48,6 +48,7 @@ public class TracksActivity extends AppCompatActivity {
             getArtistIdAndNameFromIntent();
         } else {
             mTrackModelArrayList = savedInstanceState.getParcelableArrayList(AppConstants.BundleExtras.TRACKS_EXTRA);
+            mArtistName=savedInstanceState.getString(AppConstants.BundleExtras.ARTIST_NAME_EXTRA);
             if (mTrackModelArrayList == null) {
                 getArtistIdAndNameFromIntent();
             } else {
@@ -62,6 +63,7 @@ public class TracksActivity extends AppCompatActivity {
 
     @Override
     protected void onSaveInstanceState(Bundle outState) {
+        outState.putString(AppConstants.BundleExtras.ARTIST_NAME_EXTRA,mArtistName);
         outState.putParcelableArrayList(AppConstants.BundleExtras.TRACKS_EXTRA, mTrackModelArrayList);
         super.onSaveInstanceState(outState);
     }
