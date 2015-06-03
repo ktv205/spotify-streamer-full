@@ -1,0 +1,19 @@
+<resources>
+
+    <!-- Base application theme. -->
+    <style name="AppTheme" parent="Theme.AppCompat.Light.DarkActionBar">
+
+    </style>
+
+
+    <style name="searchEditText" parent="Widget.AppCompat.EditText">
+        <item name="android:textSize">@dimen/search_edit_text_text_size</item>
+    </style>
+
+    <style name="thumbnailStyle">
+        <item name="android:layout_width">@dimen/thumbnail_width</item>
+        <item name="android:layout_height">@dimen/thumbnail_height</item>
+        <item name="android:layout_marginTop">@dimen/list_item_margin_top</item>
+        <item name="android:layout_marginBottom">@dimen/list_item_margin_bottom</item>
+    </style>
+</resources>
