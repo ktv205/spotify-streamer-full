@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="white">#FFFFFF</color>
+    <color name="black">#000000</color>
+    <color name="anti_flash_white">#F2F3F4</color>
+    <color name="artists_primary">#81b71a</color>
+    <color name="artist_primary_dark">#527410</color>
+    <color name="tracks_primary">#2196F3</color>
+    <color name="tracks_primary_dark">#1565C0</color>
+</resources>

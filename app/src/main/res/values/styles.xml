@@ -1,8 +1,19 @@
 <resources>
 
     <!-- Base application theme. -->
-    <style name="AppTheme" parent="Theme.AppCompat.Light.DarkActionBar">
+    <style name="AppTheme.Base" parent="Theme.AppCompat.Light.DarkActionBar">
 
+    </style>
+    <style name="AppTheme.Artists" parent="AppTheme.Base" >
+        <item name="actionBarStyle">@style/Artists.ActionBarStyle</item>
+        <item name="colorPrimary">@color/artists_primary</item>
+        <item name="colorPrimaryDark">@color/artist_primary_dark</item>
+    </style>
+
+    <style name="AppTheme.Tracks" parent="AppTheme.Base" >
+        <item name="actionBarStyle">@style/Tracks.ActionBarStyle</item>
+        <item name="colorPrimary">@color/tracks_primary</item>
+        <item name="colorPrimaryDark">@color/tracks_primary_dark</item>
     </style>
 
 
@@ -15,5 +26,14 @@
         <item name="android:layout_height">@dimen/thumbnail_height</item>
         <item name="android:layout_marginTop">@dimen/list_item_margin_top</item>
         <item name="android:layout_marginBottom">@dimen/list_item_margin_bottom</item>
+    </style>
+
+    <style name="Artists.ActionBarStyle" parent="Widget.AppCompat.Light.ActionBar.Solid.Inverse"></style>
+
+    <style name="Tracks.ActionBarStyle" parent="Widget.AppCompat.Light.ActionBar.Solid.Inverse">
+        <item name="subtitleTextStyle">@style/Tracks.TextAppreance</item>
+    </style>
+    <style name="Tracks.TextAppreance" parent="@android:style/TextAppearance">
+        <item name="android:textColor">@color/anti_flash_white</item>
     </style>
 </resources>
