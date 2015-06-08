@@ -10,7 +10,7 @@ Get artists by search from spotify and display top tracks for selected artist
 ######For tablet:Follows a master,detail UI flow for artists fragment and tracks fragment.DialogFragment is used to show the track preview.
 
 ###Services:
-#####PlayMusicService: Is is used to play selected song.UI elements and service will communicate via binder and messages. 
+#####PlayMusicService: Is  used to play selected song.UI elements and service will communicate via binder and messages. 
 
 
 ###Apis used.
