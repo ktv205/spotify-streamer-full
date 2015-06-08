@@ -1,27 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.example.krishnateja.spotifystreamer">
+
     <uses-permission android:name="android.permission.INTERNET"></uses-permission>
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
-        android:theme="@style/AppTheme.Base">
+        android:theme="@style/AppTheme">
         <activity
             android:name=".activities.MainActivity"
+            android:configChanges="screenSize|keyboardHidden|orientation"
             android:label="@string/app_name"
             android:theme="@style/AppTheme.Artists">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity
-            android:name=".activities.TracksActivity"
-            android:label="@string/top_tracks"
-            android:theme="@style/AppTheme.Tracks"
-            android:parentActivityName=".activities.TracksActivity"></activity>
+        <service android:name=".services.PlayMusicService"></service>
     </application>
-
 </manifest>

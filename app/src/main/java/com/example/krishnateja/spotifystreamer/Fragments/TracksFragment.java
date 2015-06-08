@@ -1,13 +1,16 @@
-package com.example.krishnateja.spotifystreamer.activities;
+package com.example.krishnateja.spotifystreamer.Fragments;
 
-import android.content.Intent;
+import android.app.Activity;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.support.annotation.Nullable;
+import android.support.v4.app.Fragment;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AdapterView;
 import android.widget.BaseAdapter;
 import android.widget.ImageView;
 import android.widget.ListView;
@@ -30,62 +33,68 @@ import kaaes.spotify.webapi.android.models.Track;
 import kaaes.spotify.webapi.android.models.Tracks;
 
 /**
- * Created by krishnateja on 6/1/2015.
+ * Created by krishnateja on 6/4/2015.
  */
-public class TracksActivity extends AppCompatActivity {
-    private static final String TAG = TracksActivity.class.getSimpleName();
+public class TracksFragment extends Fragment {
+
+    View mView;
     private ProgressBar mProgressBar;
+    private TextView mTextView;
     private ArrayList<TrackModel> mTrackModelArrayList;
     private String mArtistName;
+    private PassTracksData mPassTracksData;
+
+
+    public interface PassTracksData {
+        public void getTracksAndArtistName(ArrayList<TrackModel> trackModelArrayList, String artistName, int position);
+    }
+
 
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_tracks);
-        mProgressBar = (ProgressBar) findViewById(R.id.progress_bar);
+    public void onAttach(Activity activity) {
+        super.onAttach(activity);
+        mPassTracksData = (PassTracksData) activity;
+
+    }
+
+    @Nullable
+    @Override
+    public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
+        mView = inflater.inflate(R.layout.fragment_tracks, container, false);
+        mProgressBar = (ProgressBar) mView.findViewById(R.id.progress_bar);
+        mTextView = (TextView) mView.findViewById(R.id.results_text_view);
+
         if (savedInstanceState == null) {
-            mProgressBar.setVisibility(ProgressBar.VISIBLE);
-            getArtistIdAndNameFromIntent();
-        } else {
-            mTrackModelArrayList = savedInstanceState.getParcelableArrayList(AppConstants.BundleExtras.TRACKS_EXTRA);
-            mArtistName=savedInstanceState.getString(AppConstants.BundleExtras.ARTIST_NAME_EXTRA);
             if (mTrackModelArrayList == null) {
-                getArtistIdAndNameFromIntent();
+                mTextView.setVisibility(View.VISIBLE);
             } else {
                 setTrackListAdapter();
             }
+        } else {
+            mTrackModelArrayList = savedInstanceState.getParcelableArrayList(AppConstants.BundleExtras.TRACKS_EXTRA);
+            setTrackListAdapter();
         }
-        setUpActionBar();
-
-
+        return mView;
     }
 
-
     @Override
-    protected void onSaveInstanceState(Bundle outState) {
-        outState.putString(AppConstants.BundleExtras.ARTIST_NAME_EXTRA,mArtistName);
-        outState.putParcelableArrayList(AppConstants.BundleExtras.TRACKS_EXTRA, mTrackModelArrayList);
+    public void onSaveInstanceState(Bundle outState) {
+        if (mTrackModelArrayList != null) {
+            outState.putParcelableArrayList(AppConstants.BundleExtras.TRACKS_EXTRA, mTrackModelArrayList);
+        }
         super.onSaveInstanceState(outState);
     }
 
-    public void getArtistIdAndNameFromIntent() {
-        Intent intent = getIntent();
-        mArtistName = intent.getStringExtra(AppConstants.BundleExtras.ARTIST_NAME_EXTRA);
-        new TracksAyncTask().execute(intent.getStringExtra(AppConstants.BundleExtras.ARTIST_ID_EXTRA));
-    }
 
-    public void setTrackListAdapter() {
-        ListView listView = (ListView) findViewById(R.id.list_view);
-        TracksListAdapter tracksListAdapter = new TracksListAdapter(mTrackModelArrayList);
-        listView.setAdapter(tracksListAdapter);
-    }
-
-    private void setUpActionBar() {
-        ActionBar actionBar = getSupportActionBar();
+    private void manipulateActionBar() {
+        ActionBar actionBar = ((AppCompatActivity) getActivity()).getSupportActionBar();
         actionBar.setDisplayHomeAsUpEnabled(true);
+        actionBar.setTitle(getActivity().getString(R.string.top_tracks));
         actionBar.setSubtitle(mArtistName);
 
+
     }
+
 
     public class TracksAyncTask extends AsyncTask<String, Void, Tracks> {
 
@@ -115,8 +124,22 @@ public class TracksActivity extends AppCompatActivity {
                 mTrackModelArrayList.add(trackModel);
             }
             setTrackListAdapter();
-
         }
+    }
+
+    public void setTrackListAdapter() {
+        ListView listView = (ListView) mView.findViewById(R.id.list_view);
+        if (mTrackModelArrayList.size() == 0) {
+            mTextView.setVisibility(View.VISIBLE);
+        }
+        TracksListAdapter tracksListAdapter = new TracksListAdapter(mTrackModelArrayList);
+        listView.setAdapter(tracksListAdapter);
+        listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                mPassTracksData.getTracksAndArtistName(mTrackModelArrayList, mArtistName, position);
+            }
+        });
     }
 
 
@@ -167,12 +190,24 @@ public class TracksActivity extends AppCompatActivity {
             viewHolder.trackNameTextView.setText(mTrackList.get(position).getTrackName());
             viewHolder.albumNameTextView.setText(mTrackList.get(position).getAlbumName());
             if (mTrackList.get(position).getSmallImage() != null) {
-                Picasso.with(TracksActivity.this).load(mTrackList.get(position).getSmallImage()).into(viewHolder.picImageView);
+                Picasso.with(getActivity()).load(mTrackList.get(position).getSmallImage()).into(viewHolder.picImageView);
             }
             return view;
         }
     }
 
+    public void onLoadData(String id, String name, int flag) {
+        mTextView.setVisibility(View.GONE);
+        mProgressBar.setVisibility(View.VISIBLE);
+        mArtistName = name;
+        new TracksAyncTask().execute(id);
+        if (flag == AppConstants.FLAGS.PHONE_FLAG) {
+            manipulateActionBar();
+        }
+    }
 
+    public void emptyTheList() {
+        mTrackModelArrayList = new ArrayList<>();
+        setTrackListAdapter();
+    }
 }
-

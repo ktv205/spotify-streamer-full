@@ -7,5 +7,7 @@
     <dimen name="list_item_margin_left">5dp</dimen>
     <dimen name="list_item_margin_bottom">5dp</dimen>
     <dimen name="list_item_margin_top">5dp</dimen>
+    <dimen name="preview_image_width">300dp</dimen>
+    <dimen name="preview_image_height">300dp</dimen>
 
 </resources>

@@ -15,5 +15,12 @@
         android:layout_height="wrap_content"
         android:layout_centerInParent="true"
         android:visibility="gone"/>
+    <TextView
+        android:id="@+id/results_text_view"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerInParent="true"
+        android:text="@string/tracks_artist"
+        android:visibility="gone"/>
 
 </RelativeLayout>

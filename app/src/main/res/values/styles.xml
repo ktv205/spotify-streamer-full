@@ -1,16 +1,16 @@
 <resources>
 
     <!-- Base application theme. -->
-    <style name="AppTheme.Base" parent="Theme.AppCompat.Light.DarkActionBar">
+    <style name="AppTheme" parent="Theme.AppCompat.Light.DarkActionBar">
 
     </style>
-    <style name="AppTheme.Artists" parent="AppTheme.Base" >
+    <style name="AppTheme.Artists" parent="AppTheme" >
         <item name="actionBarStyle">@style/Artists.ActionBarStyle</item>
         <item name="colorPrimary">@color/artists_primary</item>
         <item name="colorPrimaryDark">@color/artist_primary_dark</item>
     </style>
 
-    <style name="AppTheme.Tracks" parent="AppTheme.Base" >
+    <style name="AppTheme.Tracks" parent="AppTheme" >
         <item name="actionBarStyle">@style/Tracks.ActionBarStyle</item>
         <item name="colorPrimary">@color/tracks_primary</item>
         <item name="colorPrimaryDark">@color/tracks_primary_dark</item>

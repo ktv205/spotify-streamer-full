@@ -1,134 +1,145 @@
 package com.example.krishnateja.spotifystreamer.activities;
 
-import android.content.Context;
-import android.os.AsyncTask;
+
 import android.os.Bundle;
+import android.support.v4.app.FragmentManager;
+import android.support.v4.app.FragmentTransaction;
+import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
-import android.view.KeyEvent;
-import android.view.inputmethod.EditorInfo;
-import android.view.inputmethod.InputMethodManager;
-import android.widget.EditText;
-import android.widget.TextView;
-import android.widget.Toast;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
+
 
 import com.example.krishnateja.spotifystreamer.Fragments.ArtistsFragment;
-import com.example.krishnateja.spotifystreamer.Fragments.LoadingFragment;
-import com.example.krishnateja.spotifystreamer.Fragments.WelcomeFragment;
+import com.example.krishnateja.spotifystreamer.Fragments.PreviewFragment;
+import com.example.krishnateja.spotifystreamer.Fragments.TracksFragment;
 import com.example.krishnateja.spotifystreamer.R;
 import com.example.krishnateja.spotifystreamer.models.AppConstants;
-import com.example.krishnateja.spotifystreamer.models.ArtistModel;
+import com.example.krishnateja.spotifystreamer.models.TrackModel;
 
 import java.util.ArrayList;
-import java.util.List;
-
-import kaaes.spotify.webapi.android.SpotifyApi;
-import kaaes.spotify.webapi.android.SpotifyService;
-import kaaes.spotify.webapi.android.models.Artist;
-import kaaes.spotify.webapi.android.models.ArtistsPager;
 
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements ArtistsFragment.PassArtistData,TracksFragment.PassTracksData {
 
     private static final String TAG = MainActivity.class.getSimpleName();
-    private static final String LOADING_TAG = "loading";
-    private static final String WELCOME_TAG = "welcome";
     private static final String ARTIST_TAG = "artist";
-    private EditText mSearchEditText;
-    private String mSearchQuery;
+    private static final String TRACKS_TAG = "tracks";
+    private static final String PREVIEW_TAG="preview";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        mSearchEditText = (EditText) findViewById(R.id.search_edit_text);
-        mSearchEditText.setOnEditorActionListener(new TextView.OnEditorActionListener() {
-            @Override
-            public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
-                if (actionId == EditorInfo.IME_ACTION_SEARCH) {
-                    InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
-                    mSearchQuery = mSearchEditText.getText().toString();
-                    if (mSearchQuery.isEmpty()) {
-                        mSearchEditText.setFocusable(true);
-                        imm.showSoftInput(mSearchEditText, InputMethodManager.SHOW_IMPLICIT);
-                    } else {
-                        imm.hideSoftInputFromWindow(mSearchEditText.getWindowToken(), 0);
-                        searchForArtist();
-                        addLoadingFragment();
-                    }
-                    return true;
+        if (savedInstanceState == null) {
+            ArtistsFragment artistsFragment = (ArtistsFragment) getSupportFragmentManager().findFragmentById(R.id.fragment_artists);
+            if (artistsFragment == null) {
+                artistsFragment = new ArtistsFragment();
+                FragmentTransaction fragmentTransaction = getSupportFragmentManager()
+                        .beginTransaction();
+                fragmentTransaction.replace(R.id.container_frame_layout, artistsFragment, ARTIST_TAG)
+                        .commit();
 
+            }
+        }
+        getSupportFragmentManager().addOnBackStackChangedListener(new FragmentManager.OnBackStackChangedListener() {
+            @Override
+            public void onBackStackChanged() {
+                Log.d(TAG,"backstack changed");
+                Log.d(TAG,"backstackcount->"+getSupportFragmentManager().getBackStackEntryCount());
+                if(getSupportFragmentManager().getBackStackEntryCount()==0){
+                    manipulateActionBar();
                 }
-                return false;
             }
         });
-        if (savedInstanceState == null) {
-            getSupportFragmentManager().beginTransaction()
-                    .add(R.id.container_linear_layout, new WelcomeFragment(), WELCOME_TAG)
-                    .commit();
-        } else {
-            mSearchEditText.setText(savedInstanceState.getString(AppConstants.BundleExtras.ARTIST_NAME_EXTRA));
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        MenuInflater inflater = getMenuInflater();
+        inflater.inflate(R.menu.menu_main, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        int id=item.getItemId();
+        Log.d(TAG,"id getId->"+id);
+        //Log.d(TAG,"id R.id.HomeAsHome->"+android.R.id.homeAsUp);
+        Log.d(TAG,"R.id.Home->"+android.R.id.home);
+        Log.d(TAG, "onOptionsItemSelected");
+        if(id==android.R.id.home){
+            Log.d(TAG,"options menu home");
+            getSupportFragmentManager().popBackStack();
         }
+        return super.onOptionsItemSelected(item);
+    }
+
+    public void manipulateActionBar(){
+        ActionBar actionBar=getSupportActionBar();
+        actionBar.setDisplayHomeAsUpEnabled(false);
+        actionBar.setTitle(getString(R.string.app_name));
+        actionBar.setSubtitle("");
+
     }
 
     @Override
     protected void onSaveInstanceState(Bundle outState) {
-        if(mSearchEditText!=null) {
-            outState.putString(AppConstants.BundleExtras.ARTIST_NAME_EXTRA, mSearchQuery);
-        }
         super.onSaveInstanceState(outState);
     }
 
-    private void addLoadingFragment() {
-        getSupportFragmentManager().beginTransaction().replace(R.id.container_linear_layout, new LoadingFragment(), LOADING_TAG).commit();
-    }
 
-    private void searchForArtist() {
-        new SearchArtistAsyncTask().execute(mSearchQuery);
-
-    }
-
-    public class SearchArtistAsyncTask extends AsyncTask<String, Void, ArtistsPager> {
-
-        @Override
-        protected ArtistsPager doInBackground(String... params) {
-            SpotifyApi spotifyApi = new SpotifyApi();
-            SpotifyService apiService = spotifyApi.getService();
-            ArtistsPager results = apiService.searchArtists(params[0]);
-            return results;
+    @Override
+    public void getArtistIdAndName(String id, String name) {
+        TracksFragment tracksFragment = (TracksFragment) getSupportFragmentManager().findFragmentById(R.id.fragment_tracks);
+        Log.d(TAG, "getArtistIdANdName");
+        int deviceFlag;
+        if (tracksFragment == null) {
+            deviceFlag= AppConstants.FLAGS.PHONE_FLAG;
+            Log.d(TAG, "in null in getArtistIdAndName");
+            tracksFragment = new TracksFragment();
+            FragmentTransaction fragmentTransaction = getSupportFragmentManager()
+                    .beginTransaction();
+            fragmentTransaction.replace(R.id.container_frame_layout, tracksFragment, TRACKS_TAG);
+            fragmentTransaction.addToBackStack(ARTIST_TAG);
+            fragmentTransaction.commit();
+            getSupportFragmentManager().executePendingTransactions();
+        }else{
+            deviceFlag=AppConstants.FLAGS.TABLET_FLAG;
         }
+        tracksFragment.onLoadData(id, name, deviceFlag);
+    }
 
-        @Override
-        protected void onPostExecute(ArtistsPager artistsPager) {
-            List<Artist> artists = artistsPager.artists.items;
-            if (artists.isEmpty()) {
-                getSupportFragmentManager()
-                        .beginTransaction()
-                        .replace(R.id.container_linear_layout, new WelcomeFragment(), WELCOME_TAG)
-                        .commit();
-                mSearchEditText.setText("");
-                Toast.makeText(MainActivity.this, "no artist found named " + mSearchQuery, Toast.LENGTH_SHORT).show();
-            } else {
-                ArrayList<ArtistModel> artistModelArrayList = new ArrayList<>();
-                for (Artist artist : artists) {
-                    ArtistModel artistModel = new ArtistModel();
-                    Log.d(TAG, artist.uri);
-                    Log.d(TAG, artist.name);
-                    if (artist.images.size() > 0) {
-                        artistModel.setImage(artist.images.get(1).url);
-                    }else{
-                        artistModel.setImage(null);
-                    }
-                    artistModel.setName(artist.name);
-                    artistModel.setId(artist.id);
-                    artistModelArrayList.add(artistModel);
-                }
-                ArtistsFragment artistFragment = new ArtistsFragment();
-                Bundle bundle = new Bundle();
-                bundle.putParcelableArrayList(AppConstants.BundleExtras.ARTISTS_EXTRA, artistModelArrayList);
-                artistFragment.setArguments(bundle);
-                getSupportFragmentManager().beginTransaction().replace(R.id.container_linear_layout, artistFragment, ARTIST_TAG).commit();
-            }
+    @Override
+    public void searchAgain() {
+        TracksFragment tracksFragment = (TracksFragment) getSupportFragmentManager().findFragmentById(R.id.fragment_tracks);
+        if(tracksFragment!=null){
+             tracksFragment.emptyTheList();
         }
     }
+
+    @Override
+    public void getTracksAndArtistName(ArrayList<TrackModel> trackModelArrayList, String artistName,int position) {
+        TracksFragment tracksFragment = (TracksFragment) getSupportFragmentManager().findFragmentById(R.id.fragment_tracks);
+        Bundle bundle=new Bundle();
+        bundle.putParcelableArrayList(AppConstants.BundleExtras.TRACKS_EXTRA,trackModelArrayList);
+        bundle.putString(AppConstants.BundleExtras.ARTIST_NAME_EXTRA, artistName);
+        bundle.putInt(AppConstants.BundleExtras.TRACK_POSITION,position);
+        FragmentManager fragmentManager=getSupportFragmentManager();
+        PreviewFragment previewFragment=new PreviewFragment();
+        previewFragment.setArguments(bundle);
+        if(tracksFragment!=null){
+               previewFragment.show(fragmentManager,PREVIEW_TAG);
+        }else{
+            FragmentTransaction fragmentTransaction=fragmentManager.beginTransaction();
+            fragmentTransaction.replace(R.id.container_frame_layout,previewFragment,TRACKS_TAG);
+            fragmentTransaction.addToBackStack(TRACKS_TAG);
+            fragmentTransaction.commit();
+        }
+
+    }
+
+
 }
