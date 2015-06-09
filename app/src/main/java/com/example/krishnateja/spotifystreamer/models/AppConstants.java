@@ -14,6 +14,7 @@ public class AppConstants {
         public static final String TRACK_DURATION ="track_duration" ;
         public static final String TRACK_CURRENT_TIME ="current_time";
         public static final String TRACK_REMAINING_TIME ="remaining_time" ;
+        public static final String IS_PLAYING ="is playing" ;
     }
 
     public static class FLAGS {

@@ -218,7 +218,11 @@ public class ArtistsFragment extends Fragment {
                     Log.d(TAG, artist.uri);
                     Log.d(TAG, artist.name);
                     if (artist.images.size() > 0) {
-                        artistModel.setImage(artist.images.get(1).url);
+                        if(artist.images.size()>1) {
+                            artistModel.setImage(artist.images.get(1).url);
+                        }else{
+                            artistModel.setImage(artist.images.get(0).url);
+                        }
                     } else {
                         artistModel.setImage(null);
                     }

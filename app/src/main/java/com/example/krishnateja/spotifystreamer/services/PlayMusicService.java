@@ -29,15 +29,20 @@ public class PlayMusicService extends Service implements MediaPlayer.OnPreparedL
 
     @Override
     public void onCompletion(MediaPlayer mp) {
-        Log.d(TAG, mp.getCurrentPosition() + "");
+        Message message = new Message();
+        Bundle bundle = new Bundle();
         Log.d(TAG, "onCompletion");
-        sendMessage(mp);
+        bundle.putBoolean(AppConstants.BundleExtras.IS_PLAYING, false);
+        message.setData(bundle);
+        if(mHandler!=null) {
+            mHandler.sendMessage(message);
+        }
         mTimer.cancel();
         stopSelf();
     }
 
-    public void changeSongPosition(int progress) {
-        if (mMediaPlayer != null) {
+    public void changeSongPosition(int progress, boolean isPaused) {
+        if ((mMediaPlayer != null && isPaused && !mMediaPlayer.isPlaying()) || mMediaPlayer != null && mMediaPlayer.isPlaying()) {
             mMediaPlayer.seekTo(progress * 1000);
         }
     }
@@ -63,14 +68,15 @@ public class PlayMusicService extends Service implements MediaPlayer.OnPreparedL
                     mMediaPlayer.reset();
                     initMediaPlayer();
                 }
-                Log.d(TAG, "mMediaPlayer is not null");
             }
         }
 
     }
 
     public void stopUpdatingUI() {
-        mTimer.cancel();
+        if (mTimer != null) {
+            mTimer.cancel();
+        }
     }
 
 
@@ -86,38 +92,22 @@ public class PlayMusicService extends Service implements MediaPlayer.OnPreparedL
 
     @Override
     public void onPrepared(final MediaPlayer player) {
-        Log.d(TAG, "onPrepared");
         player.start();
-        mTimer = new Timer();
-        mTimer.scheduleAtFixedRate(new TimerTask() {
-            @Override
-            public void run() {
-                sendMessage(player);
-            }
-        }, 0, 1000);
+        //player.seekTo(mStartPosition);
+        setTimer();
     }
 
     public void sendMessage(MediaPlayer player) {
         Message message = new Message();
         Bundle bundle = new Bundle();
-        int start = (int) Math.ceil((double) player.getCurrentPosition() / 1000);
-        int total = player.getDuration() / 1000;
-        int end = total - start;
-        Log.d(TAG, "end->" + end);
-        Log.d(TAG, "total->" + total);
-        Log.d(TAG, "start->" + start);
-        String timeElapsed = "00:" + start;
-        String timeRemaining = "00:" + end;
-        bundle.putString(AppConstants.BundleExtras.TRACK_CURRENT_TIME, timeElapsed);
-        bundle.putString(AppConstants.BundleExtras.TRACK_REMAINING_TIME, timeRemaining);
-        bundle.putInt(AppConstants.BundleExtras.TRACK_POSITION, start);
-        bundle.putInt(AppConstants.BundleExtras.TRACK_DURATION, total);
+        bundle = setTrackTimes(bundle, player);
         message.setData(bundle);
-        mHandler.sendMessage(message);
+        if(mHandler!=null) {
+            mHandler.sendMessage(message);
+        }
     }
 
     public void initMediaPlayer() {
-        Log.d(TAG, "initPlayer");
         if (mMediaPlayer == null) {
             mMediaPlayer = new MediaPlayer();
         }
@@ -136,20 +126,14 @@ public class PlayMusicService extends Service implements MediaPlayer.OnPreparedL
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-
-        if (mMediaPlayer == null) {
-            Log.d(TAG, "media player is null");
-        } else {
-            Log.d(TAG, "media player is not null");
-        }
-        Log.d(TAG, "here in onStartCommand");
+        setStreamURL(intent.getStringExtra(AppConstants.BundleExtras.PREVIEW_URL));
+        playSong(false);
         return START_STICKY;
 
     }
 
     @Override
     public IBinder onBind(Intent intent) {
-        Log.d(TAG, "onBind");
         return mBinder;
     }
 
@@ -162,7 +146,7 @@ public class PlayMusicService extends Service implements MediaPlayer.OnPreparedL
     @Override
     public void onDestroy() {
         super.onDestroy();
-        Log.d(TAG, "mMediaPlayer is not null");
+        Log.d(TAG,"onDestroy");
         Toast.makeText(this, "destroyed", Toast.LENGTH_SHORT).show();
         mTimer.cancel();
         mMediaPlayer.release();
@@ -171,12 +155,48 @@ public class PlayMusicService extends Service implements MediaPlayer.OnPreparedL
 
     public void setStreamURL(String url) {
         mStreamURL = url;
-
     }
 
     public void setHandle(Handler handler) {
         mHandler = handler;
         Message message = new Message();
-        handler.sendMessage(message);
+        Bundle bundle = new Bundle();
+        if (mMediaPlayer != null && mMediaPlayer.isPlaying()) {
+            bundle = setTrackTimes(bundle, mMediaPlayer);
+            setTimer();
+        } else {
+            bundle.putBoolean(AppConstants.BundleExtras.IS_PLAYING, false);
+        }
+        message.setData(bundle);
+        if(mHandler!=null) {
+            mHandler.sendMessage(message);
+        }
+    }
+
+    public Bundle setTrackTimes(Bundle bundle, MediaPlayer player) {
+        Log.d(TAG,"here in setTrackTimes");
+        if(player!=null && player.isPlaying()) {
+            bundle.putBoolean(AppConstants.BundleExtras.IS_PLAYING, true);
+            int start = (int) Math.ceil((double) player.getCurrentPosition() / 1000);
+            int total = player.getDuration() / 1000;
+            int end = total - start;
+            String timeElapsed = "00:" + start;
+            String timeRemaining = "00:" + end;
+            bundle.putString(AppConstants.BundleExtras.TRACK_CURRENT_TIME, timeElapsed);
+            bundle.putString(AppConstants.BundleExtras.TRACK_REMAINING_TIME, timeRemaining);
+            bundle.putInt(AppConstants.BundleExtras.TRACK_POSITION, start);
+            bundle.putInt(AppConstants.BundleExtras.TRACK_DURATION, total);
+        }
+        return bundle;
+    }
+
+    public void setTimer() {
+        mTimer = new Timer();
+        mTimer.scheduleAtFixedRate(new TimerTask() {
+            @Override
+            public void run() {
+                sendMessage(mMediaPlayer);
+            }
+        }, 0, 1000);
     }
 }

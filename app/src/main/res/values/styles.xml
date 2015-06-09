@@ -36,4 +36,9 @@
     <style name="Tracks.TextAppreance" parent="@android:style/TextAppearance">
         <item name="android:textColor">@color/anti_flash_white</item>
     </style>
+
+    <style name="barStyle" parent="thumbnailStyle">
+        <item name="android:layout_width">@dimen/bar_width</item>
+        <item name="android:layout_height">@dimen/bar_height</item>
+    </style>
 </resources>

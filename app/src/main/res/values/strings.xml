@@ -8,4 +8,5 @@
     <string name="top_tracks">Top Tracks</string>
     <string name="tracks_artist">Tracks of the selected artist will appear here</string>
     <string name="artist_results">Your searched artist list will appear here</string>
+    <string name="now_playing">Now playing</string>
 </resources>

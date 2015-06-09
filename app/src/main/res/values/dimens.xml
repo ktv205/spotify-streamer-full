@@ -9,5 +9,6 @@
     <dimen name="list_item_margin_top">5dp</dimen>
     <dimen name="preview_image_width">300dp</dimen>
     <dimen name="preview_image_height">300dp</dimen>
-
+    <dimen name="bar_width">40dp</dimen>
+    <dimen name="bar_height">40dp</dimen>
 </resources>
