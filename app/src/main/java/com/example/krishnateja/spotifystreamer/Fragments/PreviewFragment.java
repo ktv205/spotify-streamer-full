@@ -38,7 +38,7 @@ public class PreviewFragment extends DialogFragment implements View.OnClickListe
 
     int mPlayId = android.R.drawable.ic_media_play;
     int mPauseId = android.R.drawable.ic_media_pause;
-    int mCurrentId = mPauseId;
+    int mCurrentId;
     ImageView mPlayImageView;
     ArrayList<TrackModel> mTrackModelArrayList;
     int mSelectedItem;
@@ -57,13 +57,13 @@ public class PreviewFragment extends DialogFragment implements View.OnClickListe
 
     public interface NowPlaying {
         public void removeNowPlaying();
-        public void updateNowPlaying(ArrayList<TrackModel> TrackModel,int position,String artistName);
+        public void updateNowPlaying(ArrayList<TrackModel> TrackModel, int position, String artistName,boolean isPaused);
     }
 
     @Override
     public void onAttach(Activity activity) {
         super.onAttach(activity);
-        mNowPlaying=(NowPlaying)activity;
+        mNowPlaying = (NowPlaying) activity;
     }
 
     @Nullable
@@ -78,15 +78,16 @@ public class PreviewFragment extends DialogFragment implements View.OnClickListe
     }
 
     private void setPreviewViews(Bundle arguments) {
-        Log.d(TAG,"mIsPlaying->"+mIsPlaying);
-        mIsPlaying =arguments.getBoolean(AppConstants.BundleExtras.IS_PLAYING);
+        Log.d(TAG, "mIsPlaying->" + mIsPlaying);
+        mIsPlaying = arguments.getBoolean(AppConstants.BundleExtras.IS_PLAYING);
+        mIsPaused=arguments.getBoolean(AppConstants.BundleExtras.IS_PAUSED);
         TextView artistNameTextView = (TextView) mView.findViewById(R.id.artist_name);
         TextView albumNameTextView = (TextView) mView.findViewById(R.id.album_name);
         mPreviewImageView = (ImageView) mView.findViewById(R.id.track_preview_image);
         mSongTextView = (TextView) mView.findViewById(R.id.song_name);
         mTimeElapsedTextView = (TextView) mView.findViewById(R.id.time_elapsed);
         mTimeRemainingTextView = (TextView) mView.findViewById(R.id.time_remaining);
-        mArtistName=arguments.getString(AppConstants.BundleExtras.ARTIST_NAME_EXTRA);
+        mArtistName = arguments.getString(AppConstants.BundleExtras.ARTIST_NAME_EXTRA);
         artistNameTextView.setText(mArtistName);
         mTrackModelArrayList = arguments.getParcelableArrayList(AppConstants.BundleExtras.TRACKS_EXTRA);
         mSelectedItem = arguments.getInt(AppConstants.BundleExtras.TRACK_POSITION);
@@ -94,6 +95,13 @@ public class PreviewFragment extends DialogFragment implements View.OnClickListe
         Picasso.with(getActivity()).load(mTrackModelArrayList.get(mSelectedItem).getLargeImage()).into(mPreviewImageView);
         mSongTextView.setText(mTrackModelArrayList.get(mSelectedItem).getTrackName());
         mPlayImageView = (ImageView) mView.findViewById(R.id.play);
+        if(mIsPaused){
+            mPlayImageView.setImageResource(android.R.drawable.ic_media_play);
+            mCurrentId=android.R.drawable.ic_media_play;
+        }else{
+            mPlayImageView.setImageResource(android.R.drawable.ic_media_pause);
+            mCurrentId=android.R.drawable.ic_media_pause;
+        }
         ImageView previousImageView = (ImageView) mView.findViewById(R.id.previous);
         ImageView nextImageView = (ImageView) mView.findViewById(R.id.next);
         mSeekBar = (SeekBar) mView.findViewById(R.id.song_seek_bar);
@@ -115,18 +123,18 @@ public class PreviewFragment extends DialogFragment implements View.OnClickListe
             @Override
             public void onStopTrackingTouch(SeekBar seekBar) {
                 if (mPlayMusicService != null) {
-                    mPlayMusicService.changeSongPosition(seekBar.getProgress(),mIsPaused);
+                    mPlayMusicService.changeSongPosition(seekBar.getProgress(), mIsPaused);
                 }
             }
         });
         Intent intent = new Intent(getActivity(), PlayMusicService.class);
-        intent.putExtra(AppConstants.BundleExtras.PREVIEW_URL,mTrackModelArrayList.get(mSelectedItem).getPreview());
+        intent.putExtra(AppConstants.BundleExtras.PREVIEW_URL, mTrackModelArrayList.get(mSelectedItem).getPreview());
         if (Utils.isMyServiceRunning(PlayMusicService.class, getActivity()) && !mIsPlaying) {
             Log.d(TAG, "service is running and mIsPlaying is false");
             getActivity().stopService(intent);
             getActivity().startService(intent);
-        } else if(!Utils.isMyServiceRunning(PlayMusicService.class,getActivity())) {
-            Log.d(TAG,"service is not running");
+        } else if (!Utils.isMyServiceRunning(PlayMusicService.class, getActivity())) {
+            Log.d(TAG, "service is not running");
             getActivity().startService(intent);
         }
         if (mPlayMusicService == null) {
@@ -135,6 +143,7 @@ public class PreviewFragment extends DialogFragment implements View.OnClickListe
 
 
     }
+
     @NonNull
     @Override
     public Dialog onCreateDialog(Bundle savedInstanceState) {
@@ -189,7 +198,7 @@ public class PreviewFragment extends DialogFragment implements View.OnClickListe
         mCurrentId = android.R.drawable.ic_media_pause;
         mPlayMusicService.stopUpdatingUI();
         mPlayMusicService.playSong(mIsPaused);
-        mIsPlaying =true;
+        mIsPlaying = true;
     }
 
     private ServiceConnection mConnection = new ServiceConnection() {
@@ -200,8 +209,8 @@ public class PreviewFragment extends DialogFragment implements View.OnClickListe
             PlayMusicService.LocalBinder binder = (PlayMusicService.LocalBinder) service;
             mPlayMusicService = binder.getService();
             mBound = true;
-            if(!mIsPlaying) {
-                mIsPlaying =true;
+            if (!mIsPlaying) {
+                mIsPlaying = true;
             }
             mPlayMusicService.setHandle(handler);
         }
@@ -209,18 +218,18 @@ public class PreviewFragment extends DialogFragment implements View.OnClickListe
         @Override
         public void onServiceDisconnected(ComponentName arg0) {
             mBound = false;
+            Log.d(TAG, "onServiceDisconnected");
         }
     };
 
     @Override
     public void onStop() {
         super.onStop();
-        if (mPlayMusicService != null ) {
+        if (mPlayMusicService != null) {
             mPlayMusicService.stopUpdatingUI();
             getActivity().unbindService(mConnection);
-
-            if(mIsPlaying) {
-                mNowPlaying.updateNowPlaying(mTrackModelArrayList, mSelectedItem, mArtistName);
+            if (mIsPlaying) {
+                mNowPlaying.updateNowPlaying(mTrackModelArrayList, mSelectedItem, mArtistName,mIsPaused);
             }
         }
     }
@@ -236,7 +245,7 @@ public class PreviewFragment extends DialogFragment implements View.OnClickListe
             mSeekBar.setProgress(trackPosition);
             if ((trackPosition ==
                     trackDuration) && trackDuration != 0) {
-                mIsPlaying =false;
+                mIsPlaying = false;
                 mPlayImageView.setImageResource(android.R.drawable.ic_media_play);
                 mCurrentId = android.R.drawable.ic_media_play;
             }

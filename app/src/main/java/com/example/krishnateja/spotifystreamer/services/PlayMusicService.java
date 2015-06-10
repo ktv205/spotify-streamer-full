@@ -174,7 +174,6 @@ public class PlayMusicService extends Service implements MediaPlayer.OnPreparedL
     }
 
     public Bundle setTrackTimes(Bundle bundle, MediaPlayer player) {
-        Log.d(TAG,"here in setTrackTimes");
         if(player!=null && player.isPlaying()) {
             bundle.putBoolean(AppConstants.BundleExtras.IS_PLAYING, true);
             int start = (int) Math.ceil((double) player.getCurrentPosition() / 1000);

@@ -146,17 +146,18 @@ public class MainActivity extends AppCompatActivity implements ArtistsFragment.P
 
     @Override
     public void getTracksAndArtistName(ArrayList<TrackModel> trackModelArrayList, String artistName, int position) {
-        setUpPreviewFragment(trackModelArrayList, artistName, position, false);
+        setUpPreviewFragment(trackModelArrayList, artistName, position, false, false);
 
     }
 
-    private void setUpPreviewFragment(ArrayList<TrackModel> trackModelArrayList, String artistName, int position, boolean isPlaying) {
+    private void setUpPreviewFragment(ArrayList<TrackModel> trackModelArrayList, String artistName, int position, boolean isPlaying, boolean isPaused) {
         TracksFragment tracksFragment = (TracksFragment) getSupportFragmentManager().findFragmentById(R.id.fragment_tracks);
         Bundle bundle = new Bundle();
         bundle.putParcelableArrayList(AppConstants.BundleExtras.TRACKS_EXTRA, trackModelArrayList);
         bundle.putString(AppConstants.BundleExtras.ARTIST_NAME_EXTRA, artistName);
         bundle.putInt(AppConstants.BundleExtras.TRACK_POSITION, position);
         bundle.putBoolean(AppConstants.BundleExtras.IS_PLAYING, isPlaying);
+        bundle.putBoolean(AppConstants.BundleExtras.IS_PAUSED, isPaused);
         FragmentManager fragmentManager = getSupportFragmentManager();
         PreviewFragment previewFragment = new PreviewFragment();
         previewFragment.setArguments(bundle);
@@ -176,14 +177,21 @@ public class MainActivity extends AppCompatActivity implements ArtistsFragment.P
     }
 
     @Override
-    public void updateNowPlaying(final ArrayList<TrackModel> mTrackModelArrayList, final int position, final String artistName) {
+    public void updateNowPlaying(final ArrayList<TrackModel> mTrackModelArrayList, final int position, final String artistName, boolean isPaused) {
+        mIsPaused = isPaused;
         mAlbumTextView.setText(mTrackModelArrayList.get(position).getAlbumName());
         mTrackTextView.setText(mTrackModelArrayList.get(position).getTrackName());
-        mPlayImageView.setImageResource(android.R.drawable.ic_media_pause);
-        mCurrentId = android.R.drawable.ic_media_pause;
+        if (mIsPaused) {
+            mPlayImageView.setImageResource(android.R.drawable.ic_media_play);
+            mCurrentId = android.R.drawable.ic_media_play;
+        }else {
+            mPlayImageView.setImageResource(android.R.drawable.ic_media_pause);
+            mCurrentId = android.R.drawable.ic_media_pause;
+        }
+
         Picasso.with(this).load(mTrackModelArrayList.get(position).getSmallImage()).into(mPreviewImageView);
         if (Utils.isMyServiceRunning(PlayMusicService.class, this)) {
-            Log.d(TAG,"service is running");
+            Log.d(TAG, "service is running");
             bindService(new Intent(this, PlayMusicService.class), mServiceConnection, Context.BIND_AUTO_CREATE);
         }
         mLinearLayout.setVisibility(View.VISIBLE);
@@ -191,9 +199,8 @@ public class MainActivity extends AppCompatActivity implements ArtistsFragment.P
             @Override
             public void onClick(View v) {
                 Log.d(TAG, "unbind service");
-                mPlayMusicService.setHandle(null);
                 unbindService(mServiceConnection);
-                setUpPreviewFragment(mTrackModelArrayList, artistName, position, true);
+                setUpPreviewFragment(mTrackModelArrayList, artistName, position, true, mIsPaused);
 
 
             }
@@ -221,8 +228,6 @@ public class MainActivity extends AppCompatActivity implements ArtistsFragment.P
         @Override
         public void handleMessage(Message msg) {
             super.handleMessage(msg);
-            Log.d(TAG, "here in handle message song completed");
-            Log.d(TAG, "msg.getData->" + msg.getData().getBoolean(AppConstants.BundleExtras.IS_PLAYING));
             if (!msg.getData().getBoolean(AppConstants.BundleExtras.IS_PLAYING) && !mIsPaused) {
                 mLinearLayout.setVisibility(View.GONE);
 
@@ -231,10 +236,10 @@ public class MainActivity extends AppCompatActivity implements ArtistsFragment.P
     };
 
 
-    final ServiceConnection mServiceConnection = new ServiceConnection() {
+    ServiceConnection mServiceConnection = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
-            Log.d(TAG,"onServiceConnected");
+            Log.d(TAG, "onServiceConnected");
             PlayMusicService.LocalBinder binder = (PlayMusicService.LocalBinder) service;
             mPlayMusicService = binder.getService();
             mBound = true;
@@ -243,8 +248,7 @@ public class MainActivity extends AppCompatActivity implements ArtistsFragment.P
 
         @Override
         public void onServiceDisconnected(ComponentName name) {
-            Log.d(TAG,"onServiceDisConnected");
-
+            Log.d(TAG, "onServiceDisConnected");
         }
     };
 
