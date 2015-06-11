@@ -6,6 +6,8 @@ import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
+import android.support.v7.app.ActionBar;
+import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
@@ -70,6 +72,7 @@ public class ArtistsFragment extends Fragment {
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         Log.d(TAG, "onCreate View");
+        manipulateActionBar();
         mView = inflater.inflate(R.layout.fragment_artists, container, false);
         mSearchArtistEditText = (EditText) mView.findViewById(R.id.search_edit_text);
         mResultsTextView = (TextView) mView.findViewById(R.id.results_text_view);
@@ -83,14 +86,14 @@ public class ArtistsFragment extends Fragment {
                     mSearchQuery = mSearchArtistEditText.getText().toString();
                     if (mSearchQuery == null || mSearchQuery.isEmpty()) {
                         Log.d(TAG, "search query is empty");
-//                        mSearchArtistEditText.setFocusable(true);
-//                        imm.showSoftInput(mSearchArtistEditText, InputMethodManager.SHOW_IMPLICIT);
                     } else {
+                        imm.hideSoftInputFromWindow(mSearchArtistEditText.getWindowToken(), 0);
                         searchForArtist();
                         mPassData.searchAgain();
                     }
                 }
                 return false;
+
             }
         });
         if (savedInstanceState != null) {
@@ -108,6 +111,13 @@ public class ArtistsFragment extends Fragment {
             Log.d(TAG, "mArtistModelArrayList is nll");
         }
         return mView;
+    }
+
+    public void manipulateActionBar() {
+        ActionBar actionBar=((AppCompatActivity)getActivity()).getSupportActionBar();
+        actionBar.setSubtitle("");
+        actionBar.setTitle(getString(R.string.app_name));
+        actionBar.setDisplayHomeAsUpEnabled(false);
     }
 
     @Override

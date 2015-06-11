@@ -86,10 +86,12 @@ public class TracksFragment extends Fragment {
     }
 
 
-    private void manipulateActionBar() {
+    public void manipulateActionBar(int flag) {
         ActionBar actionBar = ((AppCompatActivity) getActivity()).getSupportActionBar();
-        actionBar.setDisplayHomeAsUpEnabled(true);
-        actionBar.setTitle(getActivity().getString(R.string.top_tracks));
+        if (flag == AppConstants.FLAGS.PHONE_FLAG) {
+            actionBar.setDisplayHomeAsUpEnabled(true);
+            actionBar.setTitle(getActivity().getString(R.string.top_tracks));
+        }
         actionBar.setSubtitle(mArtistName);
 
 
@@ -201,9 +203,8 @@ public class TracksFragment extends Fragment {
         mProgressBar.setVisibility(View.VISIBLE);
         mArtistName = name;
         new TracksAyncTask().execute(id);
-        if (flag == AppConstants.FLAGS.PHONE_FLAG) {
-            manipulateActionBar();
-        }
+        manipulateActionBar(flag);
+
     }
 
     public void emptyTheList() {

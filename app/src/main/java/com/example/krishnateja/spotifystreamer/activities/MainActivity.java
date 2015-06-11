@@ -5,7 +5,6 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
-import android.media.Image;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
@@ -19,6 +18,7 @@ import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.WindowManager;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -51,16 +51,14 @@ public class MainActivity extends AppCompatActivity implements ArtistsFragment.P
     private boolean mBound;
     private int mCurrentId;
     private boolean mIsPaused = false;
+    private int mCurrentPosition;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        mPreviewImageView = (ImageView) findViewById(R.id.track_image_view);
-        mAlbumTextView = (TextView) findViewById(R.id.album_name_text_view);
-        mTrackTextView = (TextView) findViewById(R.id.track_name_text_view);
-        mLinearLayout = (LinearLayout) findViewById(R.id.linear_layout);
-        mPlayImageView = (ImageView) findViewById(R.id.play);
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        initViewObjects();
         if (savedInstanceState == null) {
             ArtistsFragment artistsFragment = (ArtistsFragment) getSupportFragmentManager().findFragmentById(R.id.fragment_artists);
             if (artistsFragment == null) {
@@ -69,17 +67,30 @@ public class MainActivity extends AppCompatActivity implements ArtistsFragment.P
                         .beginTransaction();
                 fragmentTransaction.replace(R.id.container_frame_layout, artistsFragment, ARTIST_TAG)
                         .commit();
-
             }
         }
         getSupportFragmentManager().addOnBackStackChangedListener(new FragmentManager.OnBackStackChangedListener() {
             @Override
             public void onBackStackChanged() {
-                if (getSupportFragmentManager().getBackStackEntryCount() == 0) {
-                    manipulateActionBar();
+                TracksFragment tracksFragment=(TracksFragment)getSupportFragmentManager().findFragmentByTag(TRACKS_TAG);
+                ArtistsFragment artistsFragment=(ArtistsFragment)getSupportFragmentManager().findFragmentByTag(ARTIST_TAG);
+                if(tracksFragment!=null && tracksFragment.isVisible()){
+                    tracksFragment.manipulateActionBar(AppConstants.FLAGS.PHONE_FLAG);
                 }
+                if(artistsFragment!=null && artistsFragment.isVisible()){
+                    artistsFragment.manipulateActionBar();
+                }
+
             }
         });
+    }
+
+    private void initViewObjects() {
+        mPreviewImageView = (ImageView) findViewById(R.id.track_image_view);
+        mAlbumTextView = (TextView) findViewById(R.id.album_name_text_view);
+        mTrackTextView = (TextView) findViewById(R.id.track_name_text_view);
+        mLinearLayout = (LinearLayout) findViewById(R.id.linear_layout);
+        mPlayImageView = (ImageView) findViewById(R.id.play);
     }
 
     @Override
@@ -108,7 +119,6 @@ public class MainActivity extends AppCompatActivity implements ArtistsFragment.P
     @Override
     protected void onStop() {
         super.onStop();
-        Log.d(TAG, "onStop");
     }
 
     @Override
@@ -142,6 +152,16 @@ public class MainActivity extends AppCompatActivity implements ArtistsFragment.P
         if (tracksFragment != null) {
             tracksFragment.emptyTheList();
         }
+        if (mBound) {
+            removeTheInfoBar();
+        }
+    }
+
+    private void removeTheInfoBar() {
+        getApplicationContext().unbindService(mServiceConnection);
+        mBound = false;
+        getApplicationContext().stopService(new Intent(this, PlayMusicService.class));
+        mLinearLayout.setVisibility(View.GONE);
     }
 
     @Override
@@ -160,12 +180,15 @@ public class MainActivity extends AppCompatActivity implements ArtistsFragment.P
         bundle.putBoolean(AppConstants.BundleExtras.IS_PAUSED, isPaused);
         FragmentManager fragmentManager = getSupportFragmentManager();
         PreviewFragment previewFragment = new PreviewFragment();
-        previewFragment.setArguments(bundle);
         if (tracksFragment != null) {
+            bundle.putInt(AppConstants.BundleExtras.DEVICE, AppConstants.FLAGS.TABLET_FLAG);
+            previewFragment.setArguments(bundle);
             previewFragment.show(fragmentManager, PREVIEW_TAG);
         } else {
+            bundle.putInt(AppConstants.BundleExtras.DEVICE, AppConstants.FLAGS.PHONE_FLAG);
+            previewFragment.setArguments(bundle);
             FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
-            fragmentTransaction.replace(R.id.container_frame_layout, previewFragment, TRACKS_TAG);
+            fragmentTransaction.replace(R.id.container_frame_layout, previewFragment, PREVIEW_TAG);
             fragmentTransaction.addToBackStack(TRACKS_TAG);
             fragmentTransaction.commit();
         }
@@ -173,36 +196,41 @@ public class MainActivity extends AppCompatActivity implements ArtistsFragment.P
 
     @Override
     public void removeNowPlaying() {
-        mLinearLayout.setVisibility(View.GONE);
+        Log.d(TAG,"removeNowPlaying->"+mBound);
+        if (mBound) {
+            getApplicationContext().unbindService(mServiceConnection);
+            getApplicationContext().stopService(new Intent(this, PlayMusicService.class));
+            mLinearLayout.setVisibility(View.GONE);
+        }
     }
 
     @Override
-    public void updateNowPlaying(final ArrayList<TrackModel> mTrackModelArrayList, final int position, final String artistName, boolean isPaused) {
+    public void updateNowPlaying(final ArrayList<TrackModel> mTrackModelArrayList, final int position, final String artistName, boolean isPaused,int currentPosition) {
         mIsPaused = isPaused;
+        mCurrentPosition=currentPosition;
         mAlbumTextView.setText(mTrackModelArrayList.get(position).getAlbumName());
         mTrackTextView.setText(mTrackModelArrayList.get(position).getTrackName());
         if (mIsPaused) {
             mPlayImageView.setImageResource(android.R.drawable.ic_media_play);
             mCurrentId = android.R.drawable.ic_media_play;
-        }else {
+        } else {
             mPlayImageView.setImageResource(android.R.drawable.ic_media_pause);
             mCurrentId = android.R.drawable.ic_media_pause;
         }
-
         Picasso.with(this).load(mTrackModelArrayList.get(position).getSmallImage()).into(mPreviewImageView);
         if (Utils.isMyServiceRunning(PlayMusicService.class, this)) {
-            Log.d(TAG, "service is running");
-            bindService(new Intent(this, PlayMusicService.class), mServiceConnection, Context.BIND_AUTO_CREATE);
+            getApplicationContext().bindService(new Intent(this, PlayMusicService.class), mServiceConnection, Context.BIND_AUTO_CREATE);
         }
         mLinearLayout.setVisibility(View.VISIBLE);
         mLinearLayout.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Log.d(TAG, "unbind service");
-                unbindService(mServiceConnection);
+                if (mBound) {
+                    getApplicationContext().unbindService(mServiceConnection);
+                    mBound = false;
+                }
+                mLinearLayout.setVisibility(View.GONE);
                 setUpPreviewFragment(mTrackModelArrayList, artistName, position, true, mIsPaused);
-
-
             }
         });
         mPlayImageView.setOnClickListener(new View.OnClickListener() {
@@ -210,12 +238,12 @@ public class MainActivity extends AppCompatActivity implements ArtistsFragment.P
             public void onClick(View v) {
                 if (mCurrentId == android.R.drawable.ic_media_pause) {
                     mCurrentId = android.R.drawable.ic_media_play;
-                    mPlayMusicService.pauseSong();
+                    mCurrentPosition=mPlayMusicService.pauseSong();
                     mPlayImageView.setImageResource(android.R.drawable.ic_media_play);
                     mIsPaused = true;
                 } else {
                     mCurrentId = android.R.drawable.ic_media_pause;
-                    mPlayMusicService.playSong(true);
+                    mPlayMusicService.playSong(true,mCurrentPosition);
                     mPlayImageView.setImageResource(android.R.drawable.ic_media_pause);
                     mIsPaused = false;
                 }
@@ -230,6 +258,11 @@ public class MainActivity extends AppCompatActivity implements ArtistsFragment.P
             super.handleMessage(msg);
             if (!msg.getData().getBoolean(AppConstants.BundleExtras.IS_PLAYING) && !mIsPaused) {
                 mLinearLayout.setVisibility(View.GONE);
+                if (mBound) {
+                    getApplicationContext().unbindService(mServiceConnection);
+                    mBound = false;
+                }
+                getApplicationContext().stopService(new Intent(MainActivity.this, PlayMusicService.class));
 
             }
         }
@@ -239,7 +272,6 @@ public class MainActivity extends AppCompatActivity implements ArtistsFragment.P
     ServiceConnection mServiceConnection = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
-            Log.d(TAG, "onServiceConnected");
             PlayMusicService.LocalBinder binder = (PlayMusicService.LocalBinder) service;
             mPlayMusicService = binder.getService();
             mBound = true;
@@ -249,6 +281,7 @@ public class MainActivity extends AppCompatActivity implements ArtistsFragment.P
         @Override
         public void onServiceDisconnected(ComponentName name) {
             Log.d(TAG, "onServiceDisConnected");
+            mBound = false;
         }
     };
 

@@ -9,14 +9,16 @@
 
     <TextView
         android:id="@+id/artist_name"
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:gravity="center_horizontal"
         tools:text="artist name" />
 
     <TextView
         android:id="@+id/album_name"
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:gravity="center_horizontal"
         tools:text="album name" />
 
     <ImageView

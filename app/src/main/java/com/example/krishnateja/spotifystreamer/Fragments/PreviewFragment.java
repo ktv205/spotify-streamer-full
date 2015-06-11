@@ -12,6 +12,8 @@ import android.os.Message;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.DialogFragment;
+import android.support.v7.app.ActionBar;
+import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -54,10 +56,12 @@ public class PreviewFragment extends DialogFragment implements View.OnClickListe
     private NowPlaying mNowPlaying;
     private String mArtistName;
     private boolean mIsPlaying;
+    private int mCurrentPostition;
 
     public interface NowPlaying {
         public void removeNowPlaying();
-        public void updateNowPlaying(ArrayList<TrackModel> TrackModel, int position, String artistName,boolean isPaused);
+
+        public void updateNowPlaying(ArrayList<TrackModel> TrackModel, int position, String artistName, boolean isPaused,int currentPosition);
     }
 
     @Override
@@ -79,8 +83,9 @@ public class PreviewFragment extends DialogFragment implements View.OnClickListe
 
     private void setPreviewViews(Bundle arguments) {
         Log.d(TAG, "mIsPlaying->" + mIsPlaying);
+        manipulateActionBar(arguments.getInt(AppConstants.BundleExtras.DEVICE));
         mIsPlaying = arguments.getBoolean(AppConstants.BundleExtras.IS_PLAYING);
-        mIsPaused=arguments.getBoolean(AppConstants.BundleExtras.IS_PAUSED);
+        mIsPaused = arguments.getBoolean(AppConstants.BundleExtras.IS_PAUSED);
         TextView artistNameTextView = (TextView) mView.findViewById(R.id.artist_name);
         TextView albumNameTextView = (TextView) mView.findViewById(R.id.album_name);
         mPreviewImageView = (ImageView) mView.findViewById(R.id.track_preview_image);
@@ -95,12 +100,12 @@ public class PreviewFragment extends DialogFragment implements View.OnClickListe
         Picasso.with(getActivity()).load(mTrackModelArrayList.get(mSelectedItem).getLargeImage()).into(mPreviewImageView);
         mSongTextView.setText(mTrackModelArrayList.get(mSelectedItem).getTrackName());
         mPlayImageView = (ImageView) mView.findViewById(R.id.play);
-        if(mIsPaused){
+        if (mIsPaused) {
             mPlayImageView.setImageResource(android.R.drawable.ic_media_play);
-            mCurrentId=android.R.drawable.ic_media_play;
-        }else{
+            mCurrentId = android.R.drawable.ic_media_play;
+        } else {
             mPlayImageView.setImageResource(android.R.drawable.ic_media_pause);
-            mCurrentId=android.R.drawable.ic_media_pause;
+            mCurrentId = android.R.drawable.ic_media_pause;
         }
         ImageView previousImageView = (ImageView) mView.findViewById(R.id.previous);
         ImageView nextImageView = (ImageView) mView.findViewById(R.id.next);
@@ -122,6 +127,7 @@ public class PreviewFragment extends DialogFragment implements View.OnClickListe
 
             @Override
             public void onStopTrackingTouch(SeekBar seekBar) {
+                mCurrentPostition=seekBar.getProgress();
                 if (mPlayMusicService != null) {
                     mPlayMusicService.changeSongPosition(seekBar.getProgress(), mIsPaused);
                 }
@@ -130,17 +136,29 @@ public class PreviewFragment extends DialogFragment implements View.OnClickListe
         Intent intent = new Intent(getActivity(), PlayMusicService.class);
         intent.putExtra(AppConstants.BundleExtras.PREVIEW_URL, mTrackModelArrayList.get(mSelectedItem).getPreview());
         if (Utils.isMyServiceRunning(PlayMusicService.class, getActivity()) && !mIsPlaying) {
+            mCurrentPostition=0;
             Log.d(TAG, "service is running and mIsPlaying is false");
-            getActivity().stopService(intent);
-            getActivity().startService(intent);
+            getActivity().getApplicationContext().stopService(intent);
+            getActivity().getApplicationContext().startService(intent);
         } else if (!Utils.isMyServiceRunning(PlayMusicService.class, getActivity())) {
+            mCurrentPostition=0;
             Log.d(TAG, "service is not running");
-            getActivity().startService(intent);
+            getActivity().getApplicationContext().startService(intent);
         }
         if (mPlayMusicService == null) {
-            getActivity().bindService(intent, mConnection, Context.BIND_AUTO_CREATE);
+            getActivity().getApplicationContext().bindService(intent, mConnection, Context.BIND_AUTO_CREATE);
         }
 
+
+    }
+
+    private void manipulateActionBar(int flag) {
+        if (flag == AppConstants.FLAGS.PHONE_FLAG) {
+            ActionBar actionBar = ((AppCompatActivity) getActivity()).getSupportActionBar();
+            actionBar.setDisplayHomeAsUpEnabled(true);
+            actionBar.setTitle(getString(R.string.now_playing));
+            actionBar.setSubtitle("");
+        }
 
     }
 
@@ -161,8 +179,10 @@ public class PreviewFragment extends DialogFragment implements View.OnClickListe
                 if (mCurrentId == mPlayId) {
                     mPlayImageView.setImageResource(android.R.drawable.ic_media_pause);
                     mCurrentId = mPauseId;
-                    mPlayMusicService.playSong(mIsPaused);
+                    mPlayMusicService.playSong(mIsPaused,mCurrentPostition);
                     mIsPaused = false;
+                    Log.d(TAG, "mIsplaying in playbutton");
+                    mIsPlaying = true;
                 } else {
                     mPlayMusicService.pauseSong();
                     mIsPaused = true;
@@ -197,7 +217,7 @@ public class PreviewFragment extends DialogFragment implements View.OnClickListe
         mPlayImageView.setImageResource(android.R.drawable.ic_media_pause);
         mCurrentId = android.R.drawable.ic_media_pause;
         mPlayMusicService.stopUpdatingUI();
-        mPlayMusicService.playSong(mIsPaused);
+        mPlayMusicService.playSong(mIsPaused,0);
         mIsPlaying = true;
     }
 
@@ -227,10 +247,16 @@ public class PreviewFragment extends DialogFragment implements View.OnClickListe
         super.onStop();
         if (mPlayMusicService != null) {
             mPlayMusicService.stopUpdatingUI();
-            getActivity().unbindService(mConnection);
-            if (mIsPlaying) {
-                mNowPlaying.updateNowPlaying(mTrackModelArrayList, mSelectedItem, mArtistName,mIsPaused);
+            if (mBound) {
+                getActivity().getApplicationContext().unbindService(mConnection);
+                mBound = false;
             }
+            if (mIsPlaying) {
+                mNowPlaying.updateNowPlaying(mTrackModelArrayList, mSelectedItem, mArtistName, mIsPaused,mCurrentPostition);
+            }
+        }
+        if (!mIsPaused && !mIsPlaying) {
+            getActivity().getApplicationContext().stopService(new Intent(getActivity(), PlayMusicService.class));
         }
     }
 
@@ -240,14 +266,18 @@ public class PreviewFragment extends DialogFragment implements View.OnClickListe
             super.handleMessage(msg);
             int trackPosition = msg.getData().getInt(AppConstants.BundleExtras.TRACK_POSITION);
             int trackDuration = msg.getData().getInt(AppConstants.BundleExtras.TRACK_DURATION);
-            mTimeElapsedTextView.setText(msg.getData().getString(AppConstants.BundleExtras.TRACK_CURRENT_TIME));
-            mTimeRemainingTextView.setText(msg.getData().getString(AppConstants.BundleExtras.TRACK_REMAINING_TIME));
-            mSeekBar.setProgress(trackPosition);
-            if ((trackPosition ==
-                    trackDuration) && trackDuration != 0) {
-                mIsPlaying = false;
-                mPlayImageView.setImageResource(android.R.drawable.ic_media_play);
-                mCurrentId = android.R.drawable.ic_media_play;
+            if (trackPosition <= trackDuration) {
+                mCurrentPostition=trackPosition;
+                mTimeElapsedTextView.setText(msg.getData().getString(AppConstants.BundleExtras.TRACK_CURRENT_TIME));
+                mTimeRemainingTextView.setText(msg.getData().getString(AppConstants.BundleExtras.TRACK_REMAINING_TIME));
+                mSeekBar.setProgress(trackPosition);
+                if ((trackPosition ==
+                        trackDuration) && trackDuration != 0) {
+                    mIsPlaying = false;
+                    mPlayImageView.setImageResource(android.R.drawable.ic_media_play);
+                    mCurrentId = android.R.drawable.ic_media_play;
+                    mCurrentPostition=0;
+                }
             }
         }
     };
