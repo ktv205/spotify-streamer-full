@@ -35,9 +35,6 @@ public class PlayMusicService extends Service implements MediaPlayer.OnPreparedL
     public void onCompletion(MediaPlayer mp) {
         Message message = new Message();
         Bundle bundle = new Bundle();
-        Log.d(TAG, "onCompletion");
-        Log.d(TAG, "mIsPaused->" + mIsPaused);
-        Log.d(TAG, "mIsPlaying->" + mp.isPlaying());
         bundle.putBoolean(AppConstants.BundleExtras.IS_PLAYING, false);
         message.setData(bundle);
         if (mHandler != null) {
@@ -173,7 +170,6 @@ public class PlayMusicService extends Service implements MediaPlayer.OnPreparedL
         super.onDestroy();
         // mWakeLock.release();
         Log.d(TAG, "onDestroy");
-        Toast.makeText(this, "destroyed", Toast.LENGTH_SHORT).show();
         if (mTimer != null) {
             mTimer.cancel();
         }
@@ -211,7 +207,6 @@ public class PlayMusicService extends Service implements MediaPlayer.OnPreparedL
             bundle.putBoolean(AppConstants.BundleExtras.IS_PLAYING, true);
             int start = (int) Math.ceil((double) player.getCurrentPosition() / 1000);
             String formattedStart = String.format("%02d", start);
-            Log.d(TAG,"formattedstart->"+formattedStart);
             int total = player.getDuration() / 1000;
             int end = total - start;
             String formattedEnd = String.format("%02d",end);

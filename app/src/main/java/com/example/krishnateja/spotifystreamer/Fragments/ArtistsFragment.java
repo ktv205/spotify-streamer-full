@@ -4,6 +4,8 @@ import android.app.Activity;
 import android.content.Context;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Message;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
 import android.support.v7.app.ActionBar;
@@ -15,6 +17,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
+import android.widget.AbsListView;
 import android.widget.AdapterView;
 import android.widget.BaseAdapter;
 import android.widget.EditText;
@@ -49,10 +52,12 @@ public class ArtistsFragment extends Fragment {
     private TextView mResultsTextView;
     private ProgressBar mLoadingProgressBar;
     private PassArtistData mPassData;
-    private int mSelectedListItem = -1;
+    private ListView mListView;
+    private int mArtistSelected = -1;
 
     public interface PassArtistData {
         public void getArtistIdAndName(String id, String name);
+
         public void searchAgain();
     }
 
@@ -65,13 +70,16 @@ public class ArtistsFragment extends Fragment {
     @Override
     public void onStart() {
         super.onStart();
-        Log.d(TAG, "onStart");
+        if (mListView != null) {
+            mListView.setSelection(mArtistSelected);
+            mListView.setItemChecked(mArtistSelected, true);
+        }
     }
+
 
     @Nullable
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
-        Log.d(TAG, "onCreate View");
         manipulateActionBar();
         mView = inflater.inflate(R.layout.fragment_artists, container, false);
         mSearchArtistEditText = (EditText) mView.findViewById(R.id.search_edit_text);
@@ -82,11 +90,11 @@ public class ArtistsFragment extends Fragment {
             public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
                 InputMethodManager imm = (InputMethodManager) getActivity().getSystemService(Context.INPUT_METHOD_SERVICE);
                 if (actionId == EditorInfo.IME_ACTION_SEARCH) {
-                    Log.d(TAG, "here in action search");
                     mSearchQuery = mSearchArtistEditText.getText().toString();
                     if (mSearchQuery == null || mSearchQuery.isEmpty()) {
-                        Log.d(TAG, "search query is empty");
+
                     } else {
+                        mArtistSelected=-1;
                         imm.hideSoftInputFromWindow(mSearchArtistEditText.getWindowToken(), 0);
                         searchForArtist();
                         mPassData.searchAgain();
@@ -104,17 +112,15 @@ public class ArtistsFragment extends Fragment {
             mSearchArtistEditText.setText(mSearchQuery);
         }
         if (mArtistModelArrayList != null) {
-            Log.d(TAG, "mArtistModelArrayList not null");
             fillListView(mArtistModelArrayList);
         } else {
             mResultsTextView.setVisibility(View.VISIBLE);
-            Log.d(TAG, "mArtistModelArrayList is nll");
         }
         return mView;
     }
 
     public void manipulateActionBar() {
-        ActionBar actionBar=((AppCompatActivity)getActivity()).getSupportActionBar();
+        ActionBar actionBar = ((AppCompatActivity) getActivity()).getSupportActionBar();
         actionBar.setSubtitle("");
         actionBar.setTitle(getString(R.string.app_name));
         actionBar.setDisplayHomeAsUpEnabled(false);
@@ -123,14 +129,8 @@ public class ArtistsFragment extends Fragment {
     @Override
     public void onViewStateRestored(@Nullable Bundle savedInstanceState) {
         super.onViewStateRestored(savedInstanceState);
-        Log.d(TAG, "onView state restored");
     }
 
-    @Override
-    public void onResume() {
-        super.onResume();
-        Log.d(TAG, "in onResume");
-    }
 
     private void searchForArtist() {
         mResultsTextView.setVisibility(View.GONE);
@@ -196,7 +196,6 @@ public class ArtistsFragment extends Fragment {
             if (mArtistModelArrayList.get(position).getImage() != null) {
                 Picasso.with(getActivity()).load(mArtistModelArrayList.get(position).getImage()).into(viewHolder.picImageView);
             } else {
-                Log.d(TAG, "in pic null");
                 viewHolder.picImageView.setImageResource(R.drawable.no_image);
             }
             return view;
@@ -225,12 +224,10 @@ public class ArtistsFragment extends Fragment {
                 ArrayList<ArtistModel> artistModelArrayList = new ArrayList<>();
                 for (Artist artist : artists) {
                     ArtistModel artistModel = new ArtistModel();
-                    Log.d(TAG, artist.uri);
-                    Log.d(TAG, artist.name);
                     if (artist.images.size() > 0) {
-                        if(artist.images.size()>1) {
+                        if (artist.images.size() > 1) {
                             artistModel.setImage(artist.images.get(1).url);
-                        }else{
+                        } else {
                             artistModel.setImage(artist.images.get(0).url);
                         }
                     } else {
@@ -245,25 +242,48 @@ public class ArtistsFragment extends Fragment {
         }
     }
 
+
     private void fillListView(ArrayList<ArtistModel> artistModelArrayList) {
         mArtistModelArrayList = artistModelArrayList;
         if (artistModelArrayList == null) {
             artistModelArrayList = new ArrayList<>();
             mResultsTextView.setVisibility(View.VISIBLE);
         }
-        ListView listView = (ListView) mView.findViewById(R.id.list_view);
+        mListView = (ListView) mView.findViewById(R.id.list_view);
         ArtistListAdapter artistListAdapter = new ArtistListAdapter(artistModelArrayList);
-        listView.setAdapter(artistListAdapter);
-        listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+        mListView.setAdapter(artistListAdapter);
+        mListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                View lastView=mListView.getChildAt(mArtistSelected - mListView.getFirstVisiblePosition());
+                if(lastView!=null){
+                    lastView.setSelected(false);
+                }
+
+                mArtistSelected=position;
                 view.setSelected(true);
-                Log.d(TAG,"position->"+position);
                 mPassData.getArtistIdAndName(mArtistModelArrayList.get(position).getId(),
                         mArtistModelArrayList.get(position).getName());
             }
         });
 
+        mListView.setOnScrollListener(new AbsListView.OnScrollListener() {
+            @Override
+            public void onScrollStateChanged(AbsListView view, int scrollState) {
+                Log.d(TAG, "onScrollStateChanged");
+            }
+
+            @Override
+            public void onScroll(AbsListView view, int firstVisibleItem, int visibleItemCount, int totalItemCount) {
+                if(firstVisibleItem<=mArtistSelected && mArtistSelected<=firstVisibleItem+visibleItemCount){
+                    View itemView=mListView.getChildAt(mArtistSelected-firstVisibleItem);
+                    if(itemView!=null){
+                        itemView.setSelected(true);
+                    }
+                }
+
+            }
+        });
 
     }
 }

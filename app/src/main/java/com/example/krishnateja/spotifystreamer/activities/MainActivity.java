@@ -72,12 +72,12 @@ public class MainActivity extends AppCompatActivity implements ArtistsFragment.P
         getSupportFragmentManager().addOnBackStackChangedListener(new FragmentManager.OnBackStackChangedListener() {
             @Override
             public void onBackStackChanged() {
-                TracksFragment tracksFragment=(TracksFragment)getSupportFragmentManager().findFragmentByTag(TRACKS_TAG);
-                ArtistsFragment artistsFragment=(ArtistsFragment)getSupportFragmentManager().findFragmentByTag(ARTIST_TAG);
-                if(tracksFragment!=null && tracksFragment.isVisible()){
+                TracksFragment tracksFragment = (TracksFragment) getSupportFragmentManager().findFragmentByTag(TRACKS_TAG);
+                ArtistsFragment artistsFragment = (ArtistsFragment) getSupportFragmentManager().findFragmentByTag(ARTIST_TAG);
+                if (tracksFragment != null && tracksFragment.isVisible()) {
                     tracksFragment.manipulateActionBar(AppConstants.FLAGS.PHONE_FLAG);
                 }
-                if(artistsFragment!=null && artistsFragment.isVisible()){
+                if (artistsFragment != null && artistsFragment.isVisible()) {
                     artistsFragment.manipulateActionBar();
                 }
 
@@ -158,6 +158,9 @@ public class MainActivity extends AppCompatActivity implements ArtistsFragment.P
     }
 
     private void removeTheInfoBar() {
+        if (mPlayMusicService != null) {
+            mPlayMusicService.stopUpdatingUI();
+        }
         getApplicationContext().unbindService(mServiceConnection);
         mBound = false;
         getApplicationContext().stopService(new Intent(this, PlayMusicService.class));
@@ -196,18 +199,18 @@ public class MainActivity extends AppCompatActivity implements ArtistsFragment.P
 
     @Override
     public void removeNowPlaying() {
-        Log.d(TAG,"removeNowPlaying->"+mBound);
+        Log.d(TAG, "removeNowPlaying->" + mBound);
+        mLinearLayout.setVisibility(View.GONE);
         if (mBound) {
             getApplicationContext().unbindService(mServiceConnection);
             getApplicationContext().stopService(new Intent(this, PlayMusicService.class));
-            mLinearLayout.setVisibility(View.GONE);
         }
     }
 
     @Override
-    public void updateNowPlaying(final ArrayList<TrackModel> mTrackModelArrayList, final int position, final String artistName, boolean isPaused,int currentPosition) {
+    public void updateNowPlaying(final ArrayList<TrackModel> mTrackModelArrayList, final int position, final String artistName, boolean isPaused, int currentPosition) {
         mIsPaused = isPaused;
-        mCurrentPosition=currentPosition;
+        mCurrentPosition = currentPosition;
         mAlbumTextView.setText(mTrackModelArrayList.get(position).getAlbumName());
         mTrackTextView.setText(mTrackModelArrayList.get(position).getTrackName());
         if (mIsPaused) {
@@ -225,6 +228,9 @@ public class MainActivity extends AppCompatActivity implements ArtistsFragment.P
         mLinearLayout.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                if (mPlayMusicService != null) {
+                    mPlayMusicService.stopUpdatingUI();
+                }
                 if (mBound) {
                     getApplicationContext().unbindService(mServiceConnection);
                     mBound = false;
@@ -238,12 +244,12 @@ public class MainActivity extends AppCompatActivity implements ArtistsFragment.P
             public void onClick(View v) {
                 if (mCurrentId == android.R.drawable.ic_media_pause) {
                     mCurrentId = android.R.drawable.ic_media_play;
-                    mCurrentPosition=mPlayMusicService.pauseSong();
+                    mCurrentPosition = mPlayMusicService.pauseSong();
                     mPlayImageView.setImageResource(android.R.drawable.ic_media_play);
                     mIsPaused = true;
                 } else {
                     mCurrentId = android.R.drawable.ic_media_pause;
-                    mPlayMusicService.playSong(true,mCurrentPosition);
+                    mPlayMusicService.playSong(true, mCurrentPosition);
                     mPlayImageView.setImageResource(android.R.drawable.ic_media_pause);
                     mIsPaused = false;
                 }
@@ -280,7 +286,6 @@ public class MainActivity extends AppCompatActivity implements ArtistsFragment.P
 
         @Override
         public void onServiceDisconnected(ComponentName name) {
-            Log.d(TAG, "onServiceDisConnected");
             mBound = false;
         }
     };

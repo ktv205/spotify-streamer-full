@@ -3,13 +3,17 @@ package com.example.krishnateja.spotifystreamer.Fragments;
 import android.app.Activity;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Message;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AbsListView;
 import android.widget.AdapterView;
 import android.widget.BaseAdapter;
 import android.widget.ImageView;
@@ -43,6 +47,9 @@ public class TracksFragment extends Fragment {
     private ArrayList<TrackModel> mTrackModelArrayList;
     private String mArtistName;
     private PassTracksData mPassTracksData;
+    private ListView mListView;
+    private int mTrackSelected = -1;
+    private String TAG = TracksFragment.class.getSimpleName();
 
 
     public interface PassTracksData {
@@ -78,13 +85,17 @@ public class TracksFragment extends Fragment {
     }
 
     @Override
+    public void onStart() {
+        super.onStart();
+    }
+
+    @Override
     public void onSaveInstanceState(Bundle outState) {
         if (mTrackModelArrayList != null) {
             outState.putParcelableArrayList(AppConstants.BundleExtras.TRACKS_EXTRA, mTrackModelArrayList);
         }
         super.onSaveInstanceState(outState);
     }
-
 
     public void manipulateActionBar(int flag) {
         ActionBar actionBar = ((AppCompatActivity) getActivity()).getSupportActionBar();
@@ -130,22 +141,56 @@ public class TracksFragment extends Fragment {
     }
 
     public void setTrackListAdapter() {
-        ListView listView = (ListView) mView.findViewById(R.id.list_view);
+        mListView = (ListView) mView.findViewById(R.id.list_view);
         if (mTrackModelArrayList.size() == 0) {
             mTextView.setVisibility(View.VISIBLE);
         }
         TracksListAdapter tracksListAdapter = new TracksListAdapter(mTrackModelArrayList);
-        listView.setAdapter(tracksListAdapter);
-        listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+        mListView.setAdapter(tracksListAdapter);
+        mListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                mTrackSelected = position;
+                View lastView = mListView.getChildAt(mTrackSelected - mListView.getFirstVisiblePosition());
+//                TextView albumNameTextView;
+//                TextView trackNameTextView;
+                if (lastView != null) {
+//                    albumNameTextView=(TextView)lastView.findViewById(R.id.album_name_text_view);
+//                    trackNameTextView=(TextView)lastView.findViewById(R.id.track_name_text_view);
+//                    albumNameTextView.setTextColor(getActivity().getResources().getColor(R.color.black));
+//                    trackNameTextView.setTextColor(getActivity().getResources().getColor(R.color.black));
+                    lastView.setSelected(false);
+                }
+
+                mTrackSelected = position;
+
+                view.setSelected(true);
+
                 mPassTracksData.getTracksAndArtistName(mTrackModelArrayList, mArtistName, position);
+            }
+        });
+        mListView.setOnScrollListener(new AbsListView.OnScrollListener() {
+            @Override
+            public void onScrollStateChanged(AbsListView view, int scrollState) {
+
+            }
+
+            @Override
+            public void onScroll(AbsListView view, int firstVisibleItem, int visibleItemCount, int totalItemCount) {
+                if (firstVisibleItem <= mTrackSelected && mTrackSelected <= firstVisibleItem + visibleItemCount) {
+
+                    View itemView = mListView.getChildAt(mTrackSelected - firstVisibleItem);
+                    if (itemView != null) {
+                        itemView.setSelected(true);
+                    }
+                }
             }
         });
     }
 
 
     public class TracksListAdapter extends BaseAdapter {
+        //Handler handler;
         ArrayList<TrackModel> mTrackList;
 
         @Override
@@ -199,6 +244,7 @@ public class TracksFragment extends Fragment {
     }
 
     public void onLoadData(String id, String name, int flag) {
+        mTrackSelected = -1;
         mTextView.setVisibility(View.GONE);
         mProgressBar.setVisibility(View.VISIBLE);
         mArtistName = name;
@@ -208,6 +254,7 @@ public class TracksFragment extends Fragment {
     }
 
     public void emptyTheList() {
+        mTrackSelected = -1;
         mTrackModelArrayList = new ArrayList<>();
         setTrackListAdapter();
     }
