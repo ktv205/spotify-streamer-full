@@ -9,9 +9,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Message;
-import android.os.PowerManager;
 import android.util.Log;
-import android.widget.Toast;
 
 import com.example.krishnateja.spotifystreamer.models.AppConstants;
 
@@ -39,12 +37,14 @@ public class PlayMusicService extends Service implements MediaPlayer.OnPreparedL
         if (mHandler != null) {
             mHandler.sendMessage(message);
         }
-        mTimer.cancel();
+        stopUpdatingUI();
     }
 
     public void changeSongPosition(int progress, boolean isPaused) {
-        if ((mMediaPlayer != null && isPaused && !mMediaPlayer.isPlaying()) || mMediaPlayer != null && mMediaPlayer.isPlaying()) {
+        if ((mMediaPlayer != null && isPaused && !mMediaPlayer.isPlaying()) || (mMediaPlayer != null && mMediaPlayer.isPlaying())) {
+            Log.d(TAG, "here in seekTo");
             mMediaPlayer.seekTo(progress * 1000);
+            Log.d(TAG, "current position->" + (mMediaPlayer.getCurrentPosition() / 1000));
             if (mMediaPlayer.isPlaying()) {
                 setTimer();
             }
@@ -55,32 +55,23 @@ public class PlayMusicService extends Service implements MediaPlayer.OnPreparedL
         if (mMediaPlayer != null && mMediaPlayer.isPlaying()) {
             mMediaPlayer.pause();
             mIsPaused = true;
-            mTimer.cancel();
+            stopUpdatingUI();
             return mMediaPlayer.getCurrentPosition() / 1000;
         } else {
             return 0;
         }
     }
 
-    public void playSong(boolean isPaused, int currentPosition) {
+    public void playSong(int currentPosition) {
         mCurrentPosition = currentPosition;
-        if (isPaused) {
-            mMediaPlayer.start();
-            setTimer();
-        } else {
-            if (mMediaPlayer == null) {
-                initMediaPlayer();
-            } else {
-                if (mMediaPlayer.isPlaying()) {
-                    mMediaPlayer.stop();
-                    mMediaPlayer.reset();
-                    initMediaPlayer();
-                } else {
-                    mMediaPlayer.reset();
-                    initMediaPlayer();
-                }
+        if (mMediaPlayer != null) {
+            if (mMediaPlayer.isPlaying()) {
+                mMediaPlayer.stop();
             }
+            mMediaPlayer.reset();
         }
+        initMediaPlayer();
+
         mIsPaused = false;
 
     }
@@ -88,6 +79,7 @@ public class PlayMusicService extends Service implements MediaPlayer.OnPreparedL
     public void stopUpdatingUI() {
         if (mTimer != null) {
             mTimer.cancel();
+            mTimer.purge();
         }
     }
 
@@ -144,7 +136,7 @@ public class PlayMusicService extends Service implements MediaPlayer.OnPreparedL
             String streamURL = intent.getStringExtra(AppConstants.BundleExtras.PREVIEW_URL);
             if (streamURL != null) {
                 setStreamURL(intent.getStringExtra(AppConstants.BundleExtras.PREVIEW_URL));
-                playSong(false, 0);
+                playSong(0);
             }
 
         }
@@ -168,7 +160,7 @@ public class PlayMusicService extends Service implements MediaPlayer.OnPreparedL
         super.onDestroy();
         Log.d(TAG, "onDestroy");
         if (mTimer != null) {
-            mTimer.cancel();
+            stopUpdatingUI();
         }
         if (mMediaPlayer != null) {
             mMediaPlayer.release();
@@ -213,6 +205,7 @@ public class PlayMusicService extends Service implements MediaPlayer.OnPreparedL
         if (player != null && (player.isPlaying() || mIsPaused)) {
             bundle.putBoolean(AppConstants.BundleExtras.IS_PLAYING, true);
             int start = (int) Math.ceil((double) player.getCurrentPosition() / 1000);
+            Log.d(TAG, "start->" + start);
             bundle.putInt(AppConstants.BundleExtras.TRACK_POSITION, start);
         }
         return bundle;

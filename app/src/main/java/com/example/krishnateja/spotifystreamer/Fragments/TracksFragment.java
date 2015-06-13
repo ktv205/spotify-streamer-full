@@ -3,8 +3,7 @@ package com.example.krishnateja.spotifystreamer.Fragments;
 import android.app.Activity;
 import android.os.AsyncTask;
 import android.os.Bundle;
-import android.os.Handler;
-import android.os.Message;
+import android.os.Looper;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
 import android.support.v7.app.ActionBar;
@@ -20,6 +19,7 @@ import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.example.krishnateja.spotifystreamer.R;
 import com.example.krishnateja.spotifystreamer.models.AppConstants;
@@ -30,11 +30,15 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Handler;
 
 import kaaes.spotify.webapi.android.SpotifyApi;
+import kaaes.spotify.webapi.android.SpotifyCallback;
+import kaaes.spotify.webapi.android.SpotifyError;
 import kaaes.spotify.webapi.android.SpotifyService;
 import kaaes.spotify.webapi.android.models.Track;
 import kaaes.spotify.webapi.android.models.Tracks;
+import retrofit.client.Response;
 
 /**
  * Created by krishnateja on 6/4/2015.
@@ -42,8 +46,8 @@ import kaaes.spotify.webapi.android.models.Tracks;
 public class TracksFragment extends Fragment {
 
     View mView;
-    private ProgressBar mProgressBar;
-    private TextView mTextView;
+    private ProgressBar mLoadingProgressBar;
+    private TextView mResultsTextView;
     private ArrayList<TrackModel> mTrackModelArrayList;
     private String mArtistName;
     private PassTracksData mPassTracksData;
@@ -51,25 +55,9 @@ public class TracksFragment extends Fragment {
     private int mTrackSelected = -1;
     private String TAG = TracksFragment.class.getSimpleName();
 
-    public void changeCurrentTrack(int position,boolean isSelected) {
-        if (isSelected && position != mTrackSelected) {
-            if (mListView != null) {
-                mListView.smoothScrollToPosition(position);
-                mTrackSelected=position;
-            }
-        }else if(!isSelected){
-            if(mListView!=null){
-                setViewSelected(false, mTrackSelected);
-                mTrackSelected=-1;
-            }
-        }
-
-
-    }
-
 
     public interface PassTracksData {
-        public void setTracksAndArtistName(ArrayList<TrackModel> trackModelArrayList, String artistName, int position);
+        void setTracksAndArtistName(ArrayList<TrackModel> trackModelArrayList, String artistName, int position);
     }
 
 
@@ -88,78 +76,48 @@ public class TracksFragment extends Fragment {
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         mView = inflater.inflate(R.layout.fragment_tracks, container, false);
-        mProgressBar = (ProgressBar) mView.findViewById(R.id.progress_bar);
-        mTextView = (TextView) mView.findViewById(R.id.results_text_view);
+        mLoadingProgressBar = (ProgressBar) mView.findViewById(R.id.progress_bar);
+        mResultsTextView = (TextView) mView.findViewById(R.id.results_text_view);
 
-        if (savedInstanceState == null) {
-            if (mTrackModelArrayList == null) {
-                mTextView.setVisibility(View.VISIBLE);
-            } else {
-                setTrackListAdapter();
-            }
+        if (mTrackModelArrayList == null) {
+            mResultsTextView.setVisibility(View.VISIBLE);
         } else {
-            mTrackModelArrayList = savedInstanceState.getParcelableArrayList(AppConstants.BundleExtras.TRACKS_EXTRA);
             setTrackListAdapter();
         }
+
         return mView;
     }
 
 
-    @Override
-    public void onSaveInstanceState(Bundle outState) {
-        if (mTrackModelArrayList != null) {
-            outState.putParcelableArrayList(AppConstants.BundleExtras.TRACKS_EXTRA, mTrackModelArrayList);
-        }
-        super.onSaveInstanceState(outState);
-    }
-
     public void manipulateActionBar(int flag) {
         ActionBar actionBar = ((AppCompatActivity) getActivity()).getSupportActionBar();
-        if (flag == AppConstants.FLAGS.PHONE_FLAG) {
-            actionBar.setDisplayHomeAsUpEnabled(true);
-            actionBar.setTitle(getActivity().getString(R.string.top_tracks));
+        if (actionBar != null) {
+            if (flag == AppConstants.FLAGS.PHONE_FLAG) {
+                actionBar.setDisplayHomeAsUpEnabled(true);
+                actionBar.setTitle(getActivity().getString(R.string.top_tracks));
+            }
+            actionBar.setSubtitle(mArtistName);
         }
-        actionBar.setSubtitle(mArtistName);
-
-
     }
 
-
-    public class TracksAyncTask extends AsyncTask<String, Void, Tracks> {
-
-        @Override
-        protected Tracks doInBackground(String... params) {
-            SpotifyApi spotifyApi = new SpotifyApi();
-            SpotifyService apiService = spotifyApi.getService();
-            Map<String, Object> queryParams = new HashMap<>();
-            queryParams.put("country", "us");
-            return apiService.getArtistTopTrack(params[0], queryParams);
-        }
-
-        @Override
-        protected void onPostExecute(Tracks tracks) {
-            mProgressBar.setVisibility(ProgressBar.INVISIBLE);
-            mTrackModelArrayList = new ArrayList<>();
-            List<Track> trackList = tracks.tracks;
-            for (Track track : trackList) {
-                TrackModel trackModel = new TrackModel();
-                trackModel.setTrackName(track.name);
-                trackModel.setAlbumName(track.album.name);
-                trackModel.setPreview(track.preview_url);
-                if (track.album.images.size() > 0) {
-                    trackModel.setLargeImage(track.album.images.get(0).url);
-                    trackModel.setSmallImage(track.album.images.get(1).url);
-                }
-                mTrackModelArrayList.add(trackModel);
+    public void changeCurrentTrack(int position, boolean isSelected) {
+        if (isSelected && position != mTrackSelected) {
+            if (mListView != null) {
+                mListView.smoothScrollToPosition(position);
+                mTrackSelected = position;
             }
-            setTrackListAdapter();
+        } else if (!isSelected) {
+            if (mListView != null) {
+                setViewSelected(false, mTrackSelected);
+                mTrackSelected = -1;
+            }
         }
     }
 
     public void setTrackListAdapter() {
         mListView = (ListView) mView.findViewById(R.id.list_view);
         if (mTrackModelArrayList.size() == 0) {
-            mTextView.setVisibility(View.VISIBLE);
+            mResultsTextView.setVisibility(View.VISIBLE);
         }
         TracksListAdapter tracksListAdapter = new TracksListAdapter(mTrackModelArrayList);
         mListView.setAdapter(tracksListAdapter);
@@ -244,11 +202,55 @@ public class TracksFragment extends Fragment {
 
     public void onLoadData(String id, String name, int deviceFlag) {
         mTrackSelected = -1;
-        mTextView.setVisibility(View.GONE);
-        mProgressBar.setVisibility(View.VISIBLE);
+        mResultsTextView.setVisibility(View.GONE);
+        mLoadingProgressBar.setVisibility(View.VISIBLE);
         mArtistName = name;
-        new TracksAyncTask().execute(id);
+        SpotifyApi spotifyApi = new SpotifyApi();
+        SpotifyService apiService = spotifyApi.getService();
+        Map<String, Object> queryParams = new HashMap<>();
+        queryParams.put("country", "us");
         manipulateActionBar(deviceFlag);
+        apiService.getArtistTopTrack(id, queryParams, new SpotifyCallback<Tracks>() {
+            android.os.Handler handler = new android.os.Handler(Looper.getMainLooper());
+
+            @Override
+            public void failure(SpotifyError spotifyError) {
+                handler.post(
+                        new Runnable() {
+                            @Override
+                            public void run() {
+                                Toast.makeText(getActivity(), "Please check your network connection and try again", Toast.LENGTH_SHORT).show();
+                                mLoadingProgressBar.setVisibility(View.GONE);
+                                mResultsTextView.setVisibility(View.VISIBLE);
+                            }
+                        }
+                );
+            }
+
+            @Override
+            public void success(final Tracks tracks, Response response) {
+                handler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        mLoadingProgressBar.setVisibility(ProgressBar.INVISIBLE);
+                        mTrackModelArrayList = new ArrayList<>();
+                        List<Track> trackList = tracks.tracks;
+                        for (Track track : trackList) {
+                            TrackModel trackModel = new TrackModel();
+                            trackModel.setTrackName(track.name);
+                            trackModel.setAlbumName(track.album.name);
+                            trackModel.setPreview(track.preview_url);
+                            if (track.album.images.size() > 0) {
+                                trackModel.setLargeImage(track.album.images.get(0).url);
+                                trackModel.setSmallImage(track.album.images.get(1).url);
+                            }
+                            mTrackModelArrayList.add(trackModel);
+                        }
+                        setTrackListAdapter();
+                    }
+                });
+            }
+        });
     }
 
     public void emptyTheList() {
@@ -259,11 +261,10 @@ public class TracksFragment extends Fragment {
 
     public void setViewSelected(boolean isSelected, int pos) {
         if (mListView != null) {
-            View view =  mListView.getChildAt(pos - mListView.getFirstVisiblePosition());
+            View view = mListView.getChildAt(pos - mListView.getFirstVisiblePosition());
             if (view != null) {
                 view.setSelected(isSelected);
             }
-
         }
     }
 }

@@ -3,6 +3,6 @@
     <dimen name="search_edit_text_text_size">24sp</dimen>
     <dimen name="thumbnail_width">130dp</dimen>
     <dimen name="thumbnail_height">130dp</dimen>
-    <dimen name="preview_image_width">400dp</dimen>
-    <dimen name="preview_image_height">400dp</dimen>
+    <dimen name="preview_image_width">350dp</dimen>
+    <dimen name="preview_image_height">350dp</dimen>
 </resources>

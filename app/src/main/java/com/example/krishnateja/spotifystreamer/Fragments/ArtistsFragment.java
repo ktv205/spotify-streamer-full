@@ -5,12 +5,11 @@ import android.content.Context;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
-import android.os.Message;
+import android.os.Looper;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
-import android.util.Log;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -36,15 +35,17 @@ import java.util.ArrayList;
 import java.util.List;
 
 import kaaes.spotify.webapi.android.SpotifyApi;
+import kaaes.spotify.webapi.android.SpotifyCallback;
+import kaaes.spotify.webapi.android.SpotifyError;
 import kaaes.spotify.webapi.android.SpotifyService;
 import kaaes.spotify.webapi.android.models.Artist;
 import kaaes.spotify.webapi.android.models.ArtistsPager;
+import retrofit.client.Response;
 
 /**
  * Created by krishnateja on 6/1/2015.
  */
 public class ArtistsFragment extends Fragment {
-    private static final String TAG = ArtistsFragment.class.getSimpleName();
     private ArrayList<ArtistModel> mArtistModelArrayList;
     private EditText mSearchArtistEditText;
     private String mSearchQuery;
@@ -56,9 +57,9 @@ public class ArtistsFragment extends Fragment {
     private int mArtistSelected = -1;
 
     public interface PassArtistData {
-        public void getArtistIdAndName(String id, String name);
+        void getArtistIdAndName(String id, String name);
 
-        public void searchAgain();
+        void searchAgain();
     }
 
     @Override
@@ -90,24 +91,21 @@ public class ArtistsFragment extends Fragment {
             public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
                 InputMethodManager imm = (InputMethodManager) getActivity().getSystemService(Context.INPUT_METHOD_SERVICE);
                 if (actionId == EditorInfo.IME_ACTION_SEARCH) {
-                    mSearchQuery = mSearchArtistEditText.getText().toString();
-                    if (mSearchQuery == null || mSearchQuery.isEmpty()) {
-
-                    } else {
-                        mArtistSelected=-1;
-                        imm.hideSoftInputFromWindow(mSearchArtistEditText.getWindowToken(), 0);
+                    String query = mSearchArtistEditText.getText().toString();
+                    if (!query.isEmpty()
+                            && (mSearchQuery == null || !mSearchQuery.equals(query))) {
+                        mSearchQuery = query;
+                        manipulateActionBar();
+                        mArtistSelected = -1;
                         searchForArtist();
                         mPassData.searchAgain();
                     }
+                    imm.hideSoftInputFromWindow(mSearchArtistEditText.getWindowToken(), 0);
                 }
                 return false;
 
             }
         });
-        if (savedInstanceState != null) {
-            mArtistModelArrayList = savedInstanceState.getParcelableArrayList(AppConstants.BundleExtras.ARTISTS_EXTRA);
-            mSearchQuery = savedInstanceState.getString(AppConstants.BundleExtras.ARTIST_NAME_EXTRA);
-        }
         if (mSearchQuery != null && !mSearchQuery.isEmpty()) {
             mSearchArtistEditText.setText(mSearchQuery);
         }
@@ -121,9 +119,11 @@ public class ArtistsFragment extends Fragment {
 
     public void manipulateActionBar() {
         ActionBar actionBar = ((AppCompatActivity) getActivity()).getSupportActionBar();
-        actionBar.setSubtitle("");
-        actionBar.setTitle(getString(R.string.app_name));
-        actionBar.setDisplayHomeAsUpEnabled(false);
+        if (actionBar != null) {
+            actionBar.setSubtitle("");
+            actionBar.setTitle(getString(R.string.app_name));
+            actionBar.setDisplayHomeAsUpEnabled(false);
+        }
     }
 
     @Override
@@ -135,18 +135,72 @@ public class ArtistsFragment extends Fragment {
     private void searchForArtist() {
         mResultsTextView.setVisibility(View.GONE);
         mLoadingProgressBar.setVisibility(View.VISIBLE);
-        new SearchArtistAsyncTask().execute(mSearchQuery);
+        SpotifyApi spotifyApi = new SpotifyApi();
+        SpotifyService apiService = spotifyApi.getService();
+        apiService.searchArtists(mSearchQuery, new SpotifyCallback<ArtistsPager>() {
+            Handler handler = new Handler(Looper.getMainLooper());
+
+            @Override
+            public void failure(SpotifyError spotifyError) {
+                handler.post(
+                        new Runnable() {
+                            @Override
+                            public void run() {
+                                Toast.makeText(getActivity(), "Please check your network connection and try again", Toast.LENGTH_SHORT).show();
+                                mLoadingProgressBar.setVisibility(View.GONE);
+                                mResultsTextView.setVisibility(View.VISIBLE);
+                                mSearchQuery = "";
+                                if (mListView != null) {
+                                    fillListView(new ArrayList<ArtistModel>());
+                                }
+                                mPassData.getArtistIdAndName(null,null);
+                            }
+                        }
+                );
+            }
+
+            @Override
+            public void success(final ArtistsPager artistsPager, Response response) {
+                handler.post(
+                        new Runnable() {
+                            @Override
+                            public void run() {
+                                mLoadingProgressBar.setVisibility(View.GONE);
+                                parseArtistsPager(artistsPager);
+                            }
+                        }
+                );
+            }
+        });
     }
 
-    @Override
-    public void onSaveInstanceState(Bundle outState) {
-        if (mArtistModelArrayList != null) {
-            outState.putParcelableArrayList(AppConstants.BundleExtras.ARTISTS_EXTRA, mArtistModelArrayList);
+    private void parseArtistsPager(ArtistsPager artistsPager) {
+        mLoadingProgressBar.setVisibility(View.GONE);
+        List<Artist> artists = artistsPager.artists.items;
+        if (artists != null && artists.isEmpty()) {
+            mSearchArtistEditText.setText("");
+            Toast.makeText(getActivity(), "no artist found named " + mSearchQuery, Toast.LENGTH_SHORT).show();
+            fillListView(null);
+        } else {
+            ArrayList<ArtistModel> artistModelArrayList = new ArrayList<>();
+            for (Artist artist : artists) {
+                ArtistModel artistModel = new ArtistModel();
+                if (artist.images.size() > 0) {
+                    if (artist.images.size() > 1) {
+                        artistModel.setImage(artist.images.get(1).url);
+                    } else {
+                        artistModel.setImage(artist.images.get(0).url);
+                    }
+                } else {
+                    artistModel.setImage(null);
+                }
+                artistModel.setName(artist.name);
+                artistModel.setId(artist.id);
+                artistModelArrayList.add(artistModel);
+            }
+            fillListView(artistModelArrayList);
         }
-        if (mSearchQuery != null && !mSearchQuery.isEmpty()) {
-            outState.putString(AppConstants.BundleExtras.ARTIST_NAME_EXTRA, mSearchQuery);
-        }
-        super.onSaveInstanceState(outState);
+
     }
 
     public class ArtistListAdapter extends BaseAdapter {
@@ -202,46 +256,6 @@ public class ArtistsFragment extends Fragment {
         }
     }
 
-    public class SearchArtistAsyncTask extends AsyncTask<String, Void, ArtistsPager> {
-
-        @Override
-        protected ArtistsPager doInBackground(String... params) {
-            SpotifyApi spotifyApi = new SpotifyApi();
-            SpotifyService apiService = spotifyApi.getService();
-            ArtistsPager results = apiService.searchArtists(params[0]);
-            return results;
-        }
-
-        @Override
-        protected void onPostExecute(ArtistsPager artistsPager) {
-            mLoadingProgressBar.setVisibility(View.GONE);
-            List<Artist> artists = artistsPager.artists.items;
-            if (artists.isEmpty()) {
-                mSearchArtistEditText.setText("");
-                Toast.makeText(getActivity(), "no artist found named " + mSearchQuery, Toast.LENGTH_SHORT).show();
-                fillListView(null);
-            } else {
-                ArrayList<ArtistModel> artistModelArrayList = new ArrayList<>();
-                for (Artist artist : artists) {
-                    ArtistModel artistModel = new ArtistModel();
-                    if (artist.images.size() > 0) {
-                        if (artist.images.size() > 1) {
-                            artistModel.setImage(artist.images.get(1).url);
-                        } else {
-                            artistModel.setImage(artist.images.get(0).url);
-                        }
-                    } else {
-                        artistModel.setImage(null);
-                    }
-                    artistModel.setName(artist.name);
-                    artistModel.setId(artist.id);
-                    artistModelArrayList.add(artistModel);
-                }
-                fillListView(artistModelArrayList);
-            }
-        }
-    }
-
 
     private void fillListView(ArrayList<ArtistModel> artistModelArrayList) {
         mArtistModelArrayList = artistModelArrayList;
@@ -255,12 +269,12 @@ public class ArtistsFragment extends Fragment {
         mListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                View lastView=mListView.getChildAt(mArtistSelected - mListView.getFirstVisiblePosition());
-                if(lastView!=null){
+                View lastView = mListView.getChildAt(mArtistSelected - mListView.getFirstVisiblePosition());
+                if (lastView != null) {
                     lastView.setSelected(false);
                 }
 
-                mArtistSelected=position;
+                mArtistSelected = position;
                 view.setSelected(true);
                 mPassData.getArtistIdAndName(mArtistModelArrayList.get(position).getId(),
                         mArtistModelArrayList.get(position).getName());
@@ -274,15 +288,14 @@ public class ArtistsFragment extends Fragment {
 
             @Override
             public void onScroll(AbsListView view, int firstVisibleItem, int visibleItemCount, int totalItemCount) {
-                if(firstVisibleItem<=mArtistSelected && mArtistSelected<=firstVisibleItem+visibleItemCount){
-                    View itemView=mListView.getChildAt(mArtistSelected-firstVisibleItem);
-                    if(itemView!=null){
+                if (firstVisibleItem <= mArtistSelected && mArtistSelected <= firstVisibleItem + visibleItemCount) {
+                    View itemView = mListView.getChildAt(mArtistSelected - firstVisibleItem);
+                    if (itemView != null) {
                         itemView.setSelected(true);
                     }
                 }
 
             }
         });
-
     }
 }

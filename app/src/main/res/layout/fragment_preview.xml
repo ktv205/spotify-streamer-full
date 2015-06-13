@@ -26,7 +26,8 @@
     <ImageView
         android:id="@+id/track_preview_image"
         android:layout_width="@dimen/preview_image_width"
-        android:layout_height="@dimen/preview_image_height" />
+        android:layout_height="@dimen/preview_image_height"
+        android:layout_weight="1"/>
 
     <TextView
         android:id="@+id/song_name"

@@ -63,7 +63,7 @@ public class PreviewFragment extends DialogFragment implements View.OnClickListe
     public interface NowPlaying {
         void removeInfoBar();
 
-        void updateInfoBar(ArrayList<TrackModel> TrackModel, int position, String artistName, boolean isPaused);
+        void updateInfoBar(ArrayList<TrackModel> TrackModel, int position, String artistName, boolean isPaused, int currentPosition);
     }
 
     @Override
@@ -121,10 +121,10 @@ public class PreviewFragment extends DialogFragment implements View.OnClickListe
         mSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                if (mIsPaused) {
-                    mTimeElapsedTextView.setText(formatPlayTime(progress));
-                    mTimeRemainingTextView.setText(formatPlayTime(mTrackDuration - progress));
-                }
+                mTimeElapsedTextView.setText(formatPlayTime(progress));
+                mTimeRemainingTextView.setText(formatPlayTime(mTrackDuration - progress));
+                mCurrentPosition = progress;
+
             }
 
             @Override
@@ -138,7 +138,8 @@ public class PreviewFragment extends DialogFragment implements View.OnClickListe
             public void onStopTrackingTouch(SeekBar seekBar) {
                 mCurrentPosition = seekBar.getProgress();
                 if (mPlayMusicService != null) {
-                    mPlayMusicService.changeSongPosition(seekBar.getProgress(), mIsPaused);
+                    Log.d(TAG, "here in onStopTracking Touch");
+                    mPlayMusicService.changeSongPosition(mCurrentPosition, mIsPaused);
                 }
             }
         });
@@ -161,9 +162,11 @@ public class PreviewFragment extends DialogFragment implements View.OnClickListe
     private void manipulateActionBar(int deviceFlag) {
         if (deviceFlag == AppConstants.FLAGS.PHONE_FLAG) {
             ActionBar actionBar = ((AppCompatActivity) getActivity()).getSupportActionBar();
-            actionBar.setDisplayHomeAsUpEnabled(true);
-            actionBar.setTitle(getString(R.string.now_playing));
-            actionBar.setSubtitle("");
+            if(actionBar!=null) {
+                actionBar.setDisplayHomeAsUpEnabled(true);
+                actionBar.setTitle(getString(R.string.now_playing));
+                actionBar.setSubtitle("");
+            }
         }
 
     }
@@ -178,7 +181,7 @@ public class PreviewFragment extends DialogFragment implements View.OnClickListe
                 mBound = false;
             }
             if (mIsPlaying) {
-                mNowPlaying.updateInfoBar(mTrackModelArrayList, mSelectedItem, mArtistName, mIsPaused);
+                mNowPlaying.updateInfoBar(mTrackModelArrayList, mSelectedItem, mArtistName, mIsPaused, mCurrentPosition);
             }
         }
         if (!mIsPaused && !mIsPlaying) {
@@ -203,7 +206,7 @@ public class PreviewFragment extends DialogFragment implements View.OnClickListe
                 if (mCurrentId == mPlayId) {
                     mPlayImageView.setImageResource(android.R.drawable.ic_media_pause);
                     mCurrentId = mPauseId;
-                    mPlayMusicService.playSong(mIsPaused, mCurrentPosition);
+                    mPlayMusicService.playSong(mCurrentPosition);
                     mIsPaused = false;
                     mIsPlaying = true;
                 } else {
@@ -239,7 +242,7 @@ public class PreviewFragment extends DialogFragment implements View.OnClickListe
         mPlayImageView.setImageResource(android.R.drawable.ic_media_pause);
         mCurrentId = android.R.drawable.ic_media_pause;
         mPlayMusicService.stopUpdatingUI();
-        mPlayMusicService.playSong(mIsPaused, 0);
+        mPlayMusicService.playSong(0);
         resetSeekBar();
     }
 
@@ -297,8 +300,8 @@ public class PreviewFragment extends DialogFragment implements View.OnClickListe
     }
 
     public String formatPlayTime(int time) {
-        String formattedTime = "00:" + String.format("%02d", time);
-        return formattedTime;
+        return "00:" + String.format("%02d", time);
+
     }
 
     public void resetSeekBar() {
@@ -306,6 +309,7 @@ public class PreviewFragment extends DialogFragment implements View.OnClickListe
         mTotalTimeTextView.setText("");
         mTimeElapsedTextView.setText("");
         mTimeRemainingTextView.setText("");
+        mTrackDuration = 0;
     }
 
 }

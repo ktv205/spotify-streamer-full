@@ -11,9 +11,7 @@ import android.os.IBinder;
 import android.os.Message;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentTransaction;
-import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
-import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
@@ -39,7 +37,6 @@ import java.util.ArrayList;
 
 public class MainActivity extends AppCompatActivity implements ArtistsFragment.PassArtistData, TracksFragment.PassTracksData, PreviewFragment.NowPlaying {
 
-    private static final String TAG = MainActivity.class.getSimpleName();
     private static final String ARTIST_TAG = "artist";
     private static final String TRACKS_TAG = "tracks";
     private static final String PREVIEW_TAG = "preview";
@@ -49,9 +46,12 @@ public class MainActivity extends AppCompatActivity implements ArtistsFragment.P
     private ImageView mPlayImageView;
     private PlayMusicService mPlayMusicService;
     private boolean mIsBound;
-    private int mCurrentId;
+    private int mCurrentPlayButtonId;
     private boolean mIsPaused = false;
     private int mCurrentTrack;
+    private int mCurrentDevice = -1;
+    private String mCurrentArtistId;
+    private int mCurrentPosition;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -59,21 +59,23 @@ public class MainActivity extends AppCompatActivity implements ArtistsFragment.P
         setContentView(R.layout.activity_main);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         initViewObjects();
-        if (savedInstanceState == null) {
-            ArtistsFragment artistsFragment = (ArtistsFragment) getSupportFragmentManager().findFragmentById(R.id.fragment_artists);
-            if (artistsFragment == null) {
-                artistsFragment = new ArtistsFragment();
-                FragmentTransaction fragmentTransaction = getSupportFragmentManager()
-                        .beginTransaction();
-                fragmentTransaction.replace(R.id.container_frame_layout, artistsFragment, ARTIST_TAG)
-                        .commit();
-            }
+        ArtistsFragment artistsFragment = (ArtistsFragment) getSupportFragmentManager().findFragmentById(R.id.fragment_artists);
+        if (artistsFragment == null) {
+            mCurrentDevice = AppConstants.FLAGS.PHONE_FLAG;
+            artistsFragment = new ArtistsFragment();
+            FragmentTransaction fragmentTransaction = getSupportFragmentManager()
+                    .beginTransaction();
+            fragmentTransaction.replace(R.id.container_frame_layout, artistsFragment, ARTIST_TAG)
+                    .commit();
+        } else {
+            mCurrentDevice = AppConstants.FLAGS.TABLET_FLAG;
         }
+
         getSupportFragmentManager().addOnBackStackChangedListener(new FragmentManager.OnBackStackChangedListener() {
             @Override
             public void onBackStackChanged() {
-                TracksFragment tracksFragment = getTracksFragment();
-                ArtistsFragment artistsFragment = getArtistsFragment();
+                TracksFragment tracksFragment = getTracksFragment(mCurrentDevice);
+                ArtistsFragment artistsFragment = getArtistsFragment(mCurrentDevice);
                 if (tracksFragment != null && tracksFragment.isVisible()) {
                     tracksFragment.manipulateActionBar(AppConstants.FLAGS.PHONE_FLAG);
                     tracksFragment.changeCurrentTrack(mCurrentTrack, true);
@@ -81,7 +83,6 @@ public class MainActivity extends AppCompatActivity implements ArtistsFragment.P
                 if (artistsFragment != null && artistsFragment.isVisible()) {
                     artistsFragment.manipulateActionBar();
                 }
-
             }
         });
     }
@@ -113,31 +114,35 @@ public class MainActivity extends AppCompatActivity implements ArtistsFragment.P
 
     @Override
     public void getArtistIdAndName(String id, String name) {
-        TracksFragment tracksFragment = (TracksFragment) getSupportFragmentManager().findFragmentById(R.id.fragment_tracks);
-        int deviceFlag;
-        if (tracksFragment == null) {
-            deviceFlag = AppConstants.FLAGS.PHONE_FLAG;
-            tracksFragment = new TracksFragment();
-            FragmentTransaction fragmentTransaction = getSupportFragmentManager()
-                    .beginTransaction();
-            fragmentTransaction.replace(R.id.container_frame_layout, tracksFragment, TRACKS_TAG);
-            fragmentTransaction.addToBackStack(ARTIST_TAG);
-            fragmentTransaction.commit();
-            getSupportFragmentManager().executePendingTransactions();
+        if (id == null && name == null) {
+            mCurrentArtistId = null;
         } else {
-            deviceFlag = AppConstants.FLAGS.TABLET_FLAG;
+            TracksFragment tracksFragment = getTracksFragment(mCurrentDevice);
+            if (tracksFragment == null) {
+                tracksFragment = new TracksFragment();
+                FragmentTransaction fragmentTransaction = getSupportFragmentManager()
+                        .beginTransaction();
+                fragmentTransaction.replace(R.id.container_frame_layout, tracksFragment, TRACKS_TAG);
+                fragmentTransaction.addToBackStack(ARTIST_TAG);
+                fragmentTransaction.commit();
+                getSupportFragmentManager().executePendingTransactions();
+            }
+            if (mCurrentArtistId == null
+                    || !mCurrentArtistId.equals(id)
+                    || mCurrentDevice != AppConstants.FLAGS.TABLET_FLAG) {
+                tracksFragment.onLoadData(id, name, mCurrentDevice);
+            }
+            mCurrentArtistId = id;
         }
-        tracksFragment.onLoadData(id, name, deviceFlag);
+
     }
 
     @Override
     public void searchAgain() {
-        TracksFragment tracksFragment = (TracksFragment) getSupportFragmentManager().findFragmentById(R.id.fragment_tracks);
-        if (tracksFragment != null) {
+        TracksFragment tracksFragment = getTracksFragment(mCurrentDevice);
+        mCurrentArtistId = "";
+        if (mCurrentDevice == AppConstants.FLAGS.TABLET_FLAG) {
             tracksFragment.emptyTheList();
-        }
-        if (mIsBound) {
-            removeInfoBar();
         }
     }
 
@@ -148,7 +153,6 @@ public class MainActivity extends AppCompatActivity implements ArtistsFragment.P
 
 
     private void setUpPreviewFragment(ArrayList<TrackModel> trackModelArrayList, String artistName, int position, boolean isPlaying, boolean isPaused) {
-        TracksFragment tracksFragment = (TracksFragment) getSupportFragmentManager().findFragmentById(R.id.fragment_tracks);
         Bundle bundle = new Bundle();
         bundle.putParcelableArrayList(AppConstants.BundleExtras.TRACKS_EXTRA, trackModelArrayList);
         bundle.putString(AppConstants.BundleExtras.ARTIST_NAME_EXTRA, artistName);
@@ -157,7 +161,7 @@ public class MainActivity extends AppCompatActivity implements ArtistsFragment.P
         bundle.putBoolean(AppConstants.BundleExtras.IS_PAUSED, isPaused);
         FragmentManager fragmentManager = getSupportFragmentManager();
         PreviewFragment previewFragment = new PreviewFragment();
-        if (tracksFragment != null) {
+        if (mCurrentDevice == AppConstants.FLAGS.TABLET_FLAG) {
             bundle.putInt(AppConstants.BundleExtras.DEVICE, AppConstants.FLAGS.TABLET_FLAG);
             previewFragment.setArguments(bundle);
             previewFragment.show(fragmentManager, PREVIEW_TAG);
@@ -182,8 +186,9 @@ public class MainActivity extends AppCompatActivity implements ArtistsFragment.P
     }
 
     @Override
-    public void updateInfoBar(final ArrayList<TrackModel> mTrackModelArrayList, final int position, final String artistName, boolean isPaused) {
-        TracksFragment tracksFragment = (TracksFragment) getSupportFragmentManager().findFragmentById(R.id.fragment_tracks);
+    public void updateInfoBar(final ArrayList<TrackModel> mTrackModelArrayList, final int position, final String artistName, boolean isPaused, int currentPosition) {
+        mCurrentPosition = currentPosition;
+        TracksFragment tracksFragment = getTracksFragment(mCurrentDevice);
         if (tracksFragment != null) {
             tracksFragment.changeCurrentTrack(position, true);
         }
@@ -193,10 +198,10 @@ public class MainActivity extends AppCompatActivity implements ArtistsFragment.P
         mTrackTextView.setText(mTrackModelArrayList.get(position).getTrackName());
         if (mIsPaused) {
             mPlayImageView.setImageResource(android.R.drawable.ic_media_play);
-            mCurrentId = android.R.drawable.ic_media_play;
+            mCurrentPlayButtonId = android.R.drawable.ic_media_play;
         } else {
             mPlayImageView.setImageResource(android.R.drawable.ic_media_pause);
-            mCurrentId = android.R.drawable.ic_media_pause;
+            mCurrentPlayButtonId = android.R.drawable.ic_media_pause;
         }
         Picasso.with(this).load(mTrackModelArrayList.get(position).getSmallImage()).into(mPreviewImageView);
         if (Utils.isMyServiceRunning(PlayMusicService.class, this)) {
@@ -220,16 +225,16 @@ public class MainActivity extends AppCompatActivity implements ArtistsFragment.P
         mPlayImageView.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if (mCurrentId == android.R.drawable.ic_media_pause) {
-                    mCurrentId = android.R.drawable.ic_media_play;
+                if (mCurrentPlayButtonId == android.R.drawable.ic_media_pause) {
+                    mCurrentPlayButtonId = android.R.drawable.ic_media_play;
                     mPlayImageView.setImageResource(android.R.drawable.ic_media_play);
-                    mPlayMusicService.pauseSong();
+                    mCurrentPosition = mPlayMusicService.pauseSong();
                     mPlayMusicService.stopUpdatingUI();
                     mIsPaused = true;
                 } else {
-                    mCurrentId = android.R.drawable.ic_media_pause;
+                    mCurrentPlayButtonId = android.R.drawable.ic_media_pause;
                     mPlayImageView.setImageResource(android.R.drawable.ic_media_pause);
-                    mPlayMusicService.playSong(mIsPaused, 0);
+                    mPlayMusicService.playSong(mCurrentPosition);
                     mIsPaused = false;
                 }
 
@@ -244,13 +249,8 @@ public class MainActivity extends AppCompatActivity implements ArtistsFragment.P
             super.handleMessage(msg);
             if (!msg.getData().getBoolean(AppConstants.BundleExtras.IS_PLAYING) && !mIsPaused) {
                 mLinearLayout.setVisibility(View.GONE);
-                TracksFragment tracksFragment = (TracksFragment) getSupportFragmentManager().findFragmentById(R.id.fragment_tracks);
-                if (tracksFragment == null) {
-                    tracksFragment = getTracksFragment();
-                    if (tracksFragment != null && tracksFragment.isVisible()) {
-                        tracksFragment.changeCurrentTrack(-1, false);
-                    }
-                } else {
+                TracksFragment tracksFragment = getTracksFragment(mCurrentDevice);
+                if (tracksFragment != null && tracksFragment.isVisible()) {
                     tracksFragment.changeCurrentTrack(-1, false);
                 }
                 if (mIsBound) {
@@ -294,13 +294,23 @@ public class MainActivity extends AppCompatActivity implements ArtistsFragment.P
         }
     }
 
-    public TracksFragment getTracksFragment() {
-        TracksFragment tracksFragment = (TracksFragment) getSupportFragmentManager().findFragmentByTag(TRACKS_TAG);
+    public TracksFragment getTracksFragment(int currentDevice) {
+        TracksFragment tracksFragment;
+        if (currentDevice == AppConstants.FLAGS.PHONE_FLAG) {
+            tracksFragment = (TracksFragment) getSupportFragmentManager().findFragmentByTag(TRACKS_TAG);
+        } else {
+            tracksFragment = (TracksFragment) getSupportFragmentManager().findFragmentById(R.id.fragment_tracks);
+        }
         return tracksFragment;
     }
 
-    public ArtistsFragment getArtistsFragment() {
-        ArtistsFragment artistsFragment = (ArtistsFragment) getSupportFragmentManager().findFragmentByTag(ARTIST_TAG);
+    public ArtistsFragment getArtistsFragment(int currentDevice) {
+        ArtistsFragment artistsFragment;
+        if (currentDevice == AppConstants.FLAGS.PHONE_FLAG) {
+            artistsFragment = (ArtistsFragment) getSupportFragmentManager().findFragmentByTag(ARTIST_TAG);
+        } else {
+            artistsFragment = (ArtistsFragment) getSupportFragmentManager().findFragmentById(R.id.fragment_artists);
+        }
         return artistsFragment;
     }
 
