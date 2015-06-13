@@ -222,6 +222,7 @@ public class TracksFragment extends Fragment {
                                 Toast.makeText(getActivity(), "Please check your network connection and try again", Toast.LENGTH_SHORT).show();
                                 mLoadingProgressBar.setVisibility(View.GONE);
                                 mResultsTextView.setVisibility(View.VISIBLE);
+                                mPassTracksData.setTracksAndArtistName(null,null,-1);
                             }
                         }
                 );

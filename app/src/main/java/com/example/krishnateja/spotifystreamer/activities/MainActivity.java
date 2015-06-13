@@ -148,7 +148,11 @@ public class MainActivity extends AppCompatActivity implements ArtistsFragment.P
 
     @Override
     public void setTracksAndArtistName(ArrayList<TrackModel> trackModelArrayList, String artistName, int position) {
-        setUpPreviewFragment(trackModelArrayList, artistName, position, false, false);
+        if (trackModelArrayList == null && artistName == null && position == -1) {
+            getSupportFragmentManager().popBackStack();
+        } else {
+            setUpPreviewFragment(trackModelArrayList, artistName, position, false, false);
+        }
     }
 
 
