@@ -18,11 +18,14 @@ Get artists by search from spotify and display top tracks for selected artist
 #####2.Spotify api for android to get the results of artists and artist tracks.
 #####3.Media Player api to play songs
 
+###Working video
+https://www.youtube.com/watch?v=WL8nIPVCgMQ
+
 ###App screenshots
-![Alt text](https://cloud.githubusercontent.com/assets/7348020/7995639/e7e10f5a-0ae5-11e5-898a-7eead6ea27f1.png)
-![Alt text](https://cloud.githubusercontent.com/assets/7348020/7995640/e96adfd6-0ae5-11e5-8131-3e59904bfc0d.png)
+![screenshot_2015-06-11-22-10-09](https://cloud.githubusercontent.com/assets/7348020/8122398/4df07578-1087-11e5-98e9-db19cb502066.png)
+![screenshot_2015-06-11-22-10-14](https://cloud.githubusercontent.com/assets/7348020/8122399/4f39531e-1087-11e5-8537-cf4ceba07322.png)
+![screenshot_2015-06-11-22-10-21](https://cloud.githubusercontent.com/assets/7348020/8122400/50667e74-1087-11e5-8a56-55a11a31f7aa.png)
 ![Alt text](https://cloud.githubusercontent.com/assets/7348020/8032816/46322436-0da7-11e5-811a-834b8017d6a2.jpg)
-![Alt text](https://cloud.githubusercontent.com/assets/7348020/8032818/4634c56a-0da7-11e5-84c3-1e2b82151749.png)
 ![Alt text](https://cloud.githubusercontent.com/assets/7348020/8032817/463290a6-0da7-11e5-9660-e82f8302ff51.jpg)
 
 
