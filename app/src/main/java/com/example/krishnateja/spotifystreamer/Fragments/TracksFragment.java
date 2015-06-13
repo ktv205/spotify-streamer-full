@@ -51,16 +51,36 @@ public class TracksFragment extends Fragment {
     private int mTrackSelected = -1;
     private String TAG = TracksFragment.class.getSimpleName();
 
+    public void changeCurrentTrack(int position,boolean isSelected) {
+        if (isSelected && position != mTrackSelected) {
+            if (mListView != null) {
+                mListView.smoothScrollToPosition(position);
+                mTrackSelected=position;
+            }
+        }else if(!isSelected){
+            if(mListView!=null){
+                setViewSelected(false, mTrackSelected);
+                mTrackSelected=-1;
+            }
+        }
+
+
+    }
+
 
     public interface PassTracksData {
-        public void getTracksAndArtistName(ArrayList<TrackModel> trackModelArrayList, String artistName, int position);
+        public void setTracksAndArtistName(ArrayList<TrackModel> trackModelArrayList, String artistName, int position);
     }
 
 
     @Override
     public void onAttach(Activity activity) {
         super.onAttach(activity);
-        mPassTracksData = (PassTracksData) activity;
+        try {
+            mPassTracksData = (PassTracksData) activity;
+        } catch (Exception e) {
+            Log.d(TAG, e.toString() + "MainActivity should inplement PassTracksData interface");
+        }
 
     }
 
@@ -84,10 +104,6 @@ public class TracksFragment extends Fragment {
         return mView;
     }
 
-    @Override
-    public void onStart() {
-        super.onStart();
-    }
 
     @Override
     public void onSaveInstanceState(Bundle outState) {
@@ -150,23 +166,10 @@ public class TracksFragment extends Fragment {
         mListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                setViewSelected(false, mTrackSelected);
+                setViewSelected(true, position);
                 mTrackSelected = position;
-                View lastView = mListView.getChildAt(mTrackSelected - mListView.getFirstVisiblePosition());
-//                TextView albumNameTextView;
-//                TextView trackNameTextView;
-                if (lastView != null) {
-//                    albumNameTextView=(TextView)lastView.findViewById(R.id.album_name_text_view);
-//                    trackNameTextView=(TextView)lastView.findViewById(R.id.track_name_text_view);
-//                    albumNameTextView.setTextColor(getActivity().getResources().getColor(R.color.black));
-//                    trackNameTextView.setTextColor(getActivity().getResources().getColor(R.color.black));
-                    lastView.setSelected(false);
-                }
-
-                mTrackSelected = position;
-
-                view.setSelected(true);
-
-                mPassTracksData.getTracksAndArtistName(mTrackModelArrayList, mArtistName, position);
+                mPassTracksData.setTracksAndArtistName(mTrackModelArrayList, mArtistName, position);
             }
         });
         mListView.setOnScrollListener(new AbsListView.OnScrollListener() {
@@ -179,10 +182,7 @@ public class TracksFragment extends Fragment {
             public void onScroll(AbsListView view, int firstVisibleItem, int visibleItemCount, int totalItemCount) {
                 if (firstVisibleItem <= mTrackSelected && mTrackSelected <= firstVisibleItem + visibleItemCount) {
 
-                    View itemView = mListView.getChildAt(mTrackSelected - firstVisibleItem);
-                    if (itemView != null) {
-                        itemView.setSelected(true);
-                    }
+                    setViewSelected(true, mTrackSelected);
                 }
             }
         });
@@ -190,7 +190,6 @@ public class TracksFragment extends Fragment {
 
 
     public class TracksListAdapter extends BaseAdapter {
-        //Handler handler;
         ArrayList<TrackModel> mTrackList;
 
         @Override
@@ -243,19 +242,28 @@ public class TracksFragment extends Fragment {
         }
     }
 
-    public void onLoadData(String id, String name, int flag) {
+    public void onLoadData(String id, String name, int deviceFlag) {
         mTrackSelected = -1;
         mTextView.setVisibility(View.GONE);
         mProgressBar.setVisibility(View.VISIBLE);
         mArtistName = name;
         new TracksAyncTask().execute(id);
-        manipulateActionBar(flag);
-
+        manipulateActionBar(deviceFlag);
     }
 
     public void emptyTheList() {
         mTrackSelected = -1;
         mTrackModelArrayList = new ArrayList<>();
         setTrackListAdapter();
+    }
+
+    public void setViewSelected(boolean isSelected, int pos) {
+        if (mListView != null) {
+            View view =  mListView.getChildAt(pos - mListView.getFirstVisiblePosition());
+            if (view != null) {
+                view.setSelected(isSelected);
+            }
+
+        }
     }
 }

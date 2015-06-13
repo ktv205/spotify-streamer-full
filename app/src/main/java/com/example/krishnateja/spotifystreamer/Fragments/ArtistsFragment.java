@@ -270,7 +270,6 @@ public class ArtistsFragment extends Fragment {
         mListView.setOnScrollListener(new AbsListView.OnScrollListener() {
             @Override
             public void onScrollStateChanged(AbsListView view, int scrollState) {
-                Log.d(TAG, "onScrollStateChanged");
             }
 
             @Override

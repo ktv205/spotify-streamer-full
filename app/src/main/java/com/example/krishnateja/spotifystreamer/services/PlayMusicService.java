@@ -27,7 +27,6 @@ public class PlayMusicService extends Service implements MediaPlayer.OnPreparedL
     private Handler mHandler;
     private Timer mTimer;
     private boolean mIsPaused;
-    PowerManager.WakeLock mWakeLock;
     private int mCurrentPosition;
 
 
@@ -46,6 +45,9 @@ public class PlayMusicService extends Service implements MediaPlayer.OnPreparedL
     public void changeSongPosition(int progress, boolean isPaused) {
         if ((mMediaPlayer != null && isPaused && !mMediaPlayer.isPlaying()) || mMediaPlayer != null && mMediaPlayer.isPlaying()) {
             mMediaPlayer.seekTo(progress * 1000);
+            if (mMediaPlayer.isPlaying()) {
+                setTimer();
+            }
         }
     }
 
@@ -53,16 +55,18 @@ public class PlayMusicService extends Service implements MediaPlayer.OnPreparedL
         if (mMediaPlayer != null && mMediaPlayer.isPlaying()) {
             mMediaPlayer.pause();
             mIsPaused = true;
-            return mMediaPlayer.getCurrentPosition()/1000;
-        }else{
+            mTimer.cancel();
+            return mMediaPlayer.getCurrentPosition() / 1000;
+        } else {
             return 0;
         }
     }
 
-    public void playSong(boolean isPaused,int currentPosition) {
-        mCurrentPosition=currentPosition;
+    public void playSong(boolean isPaused, int currentPosition) {
+        mCurrentPosition = currentPosition;
         if (isPaused) {
             mMediaPlayer.start();
+            setTimer();
         } else {
             if (mMediaPlayer == null) {
                 initMediaPlayer();
@@ -101,10 +105,9 @@ public class PlayMusicService extends Service implements MediaPlayer.OnPreparedL
     @Override
     public void onPrepared(final MediaPlayer player) {
         player.start();
-        if(mCurrentPosition!=0){
-            player.seekTo(mCurrentPosition*1000);
+        if (mCurrentPosition != 0) {
+            player.seekTo(mCurrentPosition * 1000);
         }
-        //player.seekTo(mStartPosition);
         setTimer();
     }
 
@@ -137,18 +140,13 @@ public class PlayMusicService extends Service implements MediaPlayer.OnPreparedL
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-//        PowerManager powerManager = (PowerManager) getSystemService(POWER_SERVICE);
-//        mWakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK,
-//                "MyWakelockTag");
-//        mWakeLock.acquire();
-        if(intent!=null) {
-            if (intent.hasExtra(AppConstants.BundleExtras.PREVIEW_URL)) {
-                String streamURL = intent.getStringExtra(AppConstants.BundleExtras.PREVIEW_URL);
-                if (streamURL != null) {
-                    setStreamURL(intent.getStringExtra(AppConstants.BundleExtras.PREVIEW_URL));
-                    playSong(false,0);
-                }
+        if (intent != null && intent.hasExtra(AppConstants.BundleExtras.PREVIEW_URL)) {
+            String streamURL = intent.getStringExtra(AppConstants.BundleExtras.PREVIEW_URL);
+            if (streamURL != null) {
+                setStreamURL(intent.getStringExtra(AppConstants.BundleExtras.PREVIEW_URL));
+                playSong(false, 0);
             }
+
         }
         return START_STICKY;
 
@@ -168,7 +166,6 @@ public class PlayMusicService extends Service implements MediaPlayer.OnPreparedL
     @Override
     public void onDestroy() {
         super.onDestroy();
-        // mWakeLock.release();
         Log.d(TAG, "onDestroy");
         if (mTimer != null) {
             mTimer.cancel();
@@ -190,9 +187,11 @@ public class PlayMusicService extends Service implements MediaPlayer.OnPreparedL
         mHandler = handler;
         Message message = new Message();
         Bundle bundle = new Bundle();
-        if (mMediaPlayer != null && mMediaPlayer.isPlaying()) {
+        if (mMediaPlayer != null && (mMediaPlayer.isPlaying() || mIsPaused)) {
             bundle = setTrackTimes(bundle, mMediaPlayer);
-            setTimer();
+            if (!mIsPaused) {
+                setTimer();
+            }
         } else {
             bundle.putBoolean(AppConstants.BundleExtras.IS_PLAYING, false);
         }
@@ -202,20 +201,19 @@ public class PlayMusicService extends Service implements MediaPlayer.OnPreparedL
         }
     }
 
+    public int getTrackDuration() {
+        if (mMediaPlayer != null && (mMediaPlayer.isPlaying() || mIsPaused)) {
+            return mMediaPlayer.getDuration() / 1000;
+        } else {
+            return 0;
+        }
+    }
+
     public Bundle setTrackTimes(Bundle bundle, MediaPlayer player) {
         if (player != null && (player.isPlaying() || mIsPaused)) {
             bundle.putBoolean(AppConstants.BundleExtras.IS_PLAYING, true);
             int start = (int) Math.ceil((double) player.getCurrentPosition() / 1000);
-            String formattedStart = String.format("%02d", start);
-            int total = player.getDuration() / 1000;
-            int end = total - start;
-            String formattedEnd = String.format("%02d",end);
-            String timeElapsed = "00:" + formattedStart;
-            String timeRemaining = "00:" + formattedEnd;
-            bundle.putString(AppConstants.BundleExtras.TRACK_CURRENT_TIME, timeElapsed);
-            bundle.putString(AppConstants.BundleExtras.TRACK_REMAINING_TIME, timeRemaining);
             bundle.putInt(AppConstants.BundleExtras.TRACK_POSITION, start);
-            bundle.putInt(AppConstants.BundleExtras.TRACK_DURATION, total);
         }
         return bundle;
     }
