@@ -12,6 +12,7 @@ import android.os.Message;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentTransaction;
 import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
@@ -53,12 +54,14 @@ public class MainActivity extends AppCompatActivity implements ArtistsFragment.P
     private int mCurrentPosition;
     private ArrayList<TrackModel> mTrackModelArrayList;
     private String mArtistName;
-    private String TAG=MainActivity.class.getSimpleName();
+    private String TAG = MainActivity.class.getSimpleName();
+    private boolean mIsSavedInstanceCalled = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        mIsSavedInstanceCalled = false;
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         initViewObjects();
         ArtistsFragment artistsFragment = (ArtistsFragment) getSupportFragmentManager().findFragmentById(R.id.fragment_artists);
@@ -104,6 +107,8 @@ public class MainActivity extends AppCompatActivity implements ArtistsFragment.P
 
     @Override
     protected void onSaveInstanceState(Bundle outState) {
+        mIsSavedInstanceCalled=true;
+        Log.d(TAG, "onSavedInstanceState");
         outState.putBoolean(AppConstants.BundleExtras.IS_BOUND, mIsBound);
         outState.putInt(AppConstants.BundleExtras.CURRENT_TRACK, mCurrentTrack);
         outState.putInt(AppConstants.BundleExtras.TRACK_CURRENT_TIME, mCurrentPosition);
@@ -212,6 +217,7 @@ public class MainActivity extends AppCompatActivity implements ArtistsFragment.P
     public void removeInfoBar() {
         mLinearLayout.setVisibility(View.GONE);
         if (mIsBound) {
+            Log.d(TAG, "unbinding in mainactivity");
             getApplicationContext().unbindService(mServiceConnection);
             getApplicationContext().stopService(new Intent(this, PlayMusicService.class));
             mIsBound = false;
@@ -239,7 +245,8 @@ public class MainActivity extends AppCompatActivity implements ArtistsFragment.P
             mCurrentPlayButtonId = android.R.drawable.ic_media_pause;
         }
         Picasso.with(this).load(mTrackModelArrayList.get(track).getSmallImage()).into(mPreviewImageView);
-        if (Utils.isMyServiceRunning(PlayMusicService.class, this)) {
+        if (Utils.isMyServiceRunning(PlayMusicService.class, this) && !mIsSavedInstanceCalled) {
+            Log.d(TAG, "binding in mainactivity");
             getApplicationContext().bindService(new Intent(this, PlayMusicService.class), mServiceConnection, Context.BIND_AUTO_CREATE);
         }
         mLinearLayout.setVisibility(View.VISIBLE);
@@ -302,6 +309,8 @@ public class MainActivity extends AppCompatActivity implements ArtistsFragment.P
     ServiceConnection mServiceConnection = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
+            Log.d(TAG, "service Connected");
+
             PlayMusicService.LocalBinder binder = (PlayMusicService.LocalBinder) service;
             mPlayMusicService = binder.getService();
             mIsBound = true;
@@ -317,7 +326,9 @@ public class MainActivity extends AppCompatActivity implements ArtistsFragment.P
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        Log.d(TAG, "onDestroy");
         if (mIsBound) {
+            Log.d(TAG, "unbinding in mainactivity");
             getApplicationContext().unbindService(mServiceConnection);
             mIsBound = false;
         }

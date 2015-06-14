@@ -204,7 +204,6 @@ public class PlayMusicService extends Service implements MediaPlayer.OnPreparedL
         if (player != null && (player.isPlaying() || mIsPaused)) {
             bundle.putBoolean(AppConstants.BundleExtras.IS_PLAYING, true);
             int start = (int) Math.ceil((double) player.getCurrentPosition() / 1000);
-            Log.d(TAG, "start->" + start);
             bundle.putInt(AppConstants.BundleExtras.TRACK_POSITION, start);
         }
         return bundle;
