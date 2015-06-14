@@ -87,6 +87,11 @@ public class PreviewFragment extends DialogFragment implements View.OnClickListe
         return mView;
     }
 
+    @Override
+    public void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+    }
+
     private void setPreviewViews(Bundle arguments) {
         TextView artistNameTextView = (TextView) mView.findViewById(R.id.artist_name);
         TextView albumNameTextView = (TextView) mView.findViewById(R.id.album_name);

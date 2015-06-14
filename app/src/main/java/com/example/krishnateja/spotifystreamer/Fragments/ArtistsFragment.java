@@ -26,6 +26,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.example.krishnateja.spotifystreamer.R;
+import com.example.krishnateja.spotifystreamer.models.AppConstants;
 import com.example.krishnateja.spotifystreamer.models.ArtistModel;
 import com.squareup.picasso.Picasso;
 
@@ -104,13 +105,18 @@ public class ArtistsFragment extends Fragment {
 
             }
         });
-        if (mSearchQuery != null && !mSearchQuery.isEmpty()) {
-            mSearchArtistEditText.setText(mSearchQuery);
-        }
         if (mArtistModelArrayList != null) {
+            fillListView(mArtistModelArrayList);
+        }else if(savedInstanceState!=null){
+            mArtistModelArrayList=savedInstanceState.getParcelableArrayList(AppConstants.BundleExtras.ARTISTS_EXTRA);
+            mSearchQuery=savedInstanceState.getString(AppConstants.BundleExtras.ARTIST_NAME_EXTRA);
+            mArtistSelected=savedInstanceState.getInt(AppConstants.BundleExtras.CURRENT_ARTIST);
             fillListView(mArtistModelArrayList);
         } else {
             mResultsTextView.setVisibility(View.VISIBLE);
+        }
+        if (mSearchQuery != null && !mSearchQuery.isEmpty()) {
+            mSearchArtistEditText.setText(mSearchQuery);
         }
         return mView;
     }
@@ -122,6 +128,14 @@ public class ArtistsFragment extends Fragment {
             actionBar.setTitle(getString(R.string.app_name));
             actionBar.setDisplayHomeAsUpEnabled(false);
         }
+    }
+
+    @Override
+    public void onSaveInstanceState(Bundle outState) {
+        outState.putParcelableArrayList(AppConstants.BundleExtras.ARTISTS_EXTRA, mArtistModelArrayList);
+        outState.putString(AppConstants.BundleExtras.ARTIST_NAME_EXTRA, mSearchQuery);
+        outState.putInt(AppConstants.BundleExtras.CURRENT_ARTIST,mArtistSelected);
+        super.onSaveInstanceState(outState);
     }
 
     @Override

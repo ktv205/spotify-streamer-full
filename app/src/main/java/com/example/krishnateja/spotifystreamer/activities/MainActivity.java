@@ -21,7 +21,6 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
-
 import com.example.krishnateja.spotifystreamer.Fragments.ArtistsFragment;
 import com.example.krishnateja.spotifystreamer.Fragments.PreviewFragment;
 import com.example.krishnateja.spotifystreamer.Fragments.TracksFragment;
@@ -52,6 +51,9 @@ public class MainActivity extends AppCompatActivity implements ArtistsFragment.P
     private int mCurrentDevice = -1;
     private String mCurrentArtistId;
     private int mCurrentPosition;
+    private ArrayList<TrackModel> mTrackModelArrayList;
+    private String mArtistName;
+    private String TAG=MainActivity.class.getSimpleName();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -85,6 +87,33 @@ public class MainActivity extends AppCompatActivity implements ArtistsFragment.P
                 }
             }
         });
+        if (savedInstanceState != null) {
+            mCurrentArtistId = savedInstanceState.getString(AppConstants.BundleExtras.ARTIST_ID_EXTRA);
+            mCurrentDevice = savedInstanceState.getInt(AppConstants.BundleExtras.CURRENT_DEVICE);
+            mIsBound = savedInstanceState.getBoolean(AppConstants.BundleExtras.IS_BOUND);
+            if (mIsBound) {
+                mTrackModelArrayList = savedInstanceState.getParcelableArrayList(AppConstants.BundleExtras.TRACKS_EXTRA);
+                mCurrentTrack = savedInstanceState.getInt(AppConstants.BundleExtras.CURRENT_TRACK);
+                mCurrentPosition = savedInstanceState.getInt(AppConstants.BundleExtras.TRACK_CURRENT_TIME);
+                mIsPaused = savedInstanceState.getBoolean(AppConstants.BundleExtras.IS_PAUSED);
+                mArtistName = savedInstanceState.getString(AppConstants.BundleExtras.ARTIST_NAME_EXTRA);
+                updateInfoBar(mTrackModelArrayList, mCurrentTrack, mArtistName, mIsPaused, mCurrentPosition);
+            }
+        }
+    }
+
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        outState.putBoolean(AppConstants.BundleExtras.IS_BOUND, mIsBound);
+        outState.putInt(AppConstants.BundleExtras.CURRENT_TRACK, mCurrentTrack);
+        outState.putInt(AppConstants.BundleExtras.TRACK_CURRENT_TIME, mCurrentPosition);
+        outState.putInt(AppConstants.BundleExtras.CURRENT_PLAY_BUTTON_ID, mCurrentPlayButtonId);
+        outState.putInt(AppConstants.BundleExtras.CURRENT_DEVICE, mCurrentDevice);
+        outState.putString(AppConstants.BundleExtras.ARTIST_ID_EXTRA, mCurrentArtistId);
+        outState.putBoolean(AppConstants.BundleExtras.IS_PAUSED, mIsPaused);
+        outState.putString(AppConstants.BundleExtras.ARTIST_NAME_EXTRA, mArtistName);
+        outState.putParcelableArrayList(AppConstants.BundleExtras.TRACKS_EXTRA, mTrackModelArrayList);
+        super.onSaveInstanceState(outState);
     }
 
     private void initViewObjects() {
@@ -190,16 +219,18 @@ public class MainActivity extends AppCompatActivity implements ArtistsFragment.P
     }
 
     @Override
-    public void updateInfoBar(final ArrayList<TrackModel> mTrackModelArrayList, final int position, final String artistName, boolean isPaused, int currentPosition) {
+    public void updateInfoBar(final ArrayList<TrackModel> trackModelArrayList, final int track, final String artistName, boolean isPaused, int currentPosition) {
         mCurrentPosition = currentPosition;
+        mArtistName = artistName;
+        mTrackModelArrayList = trackModelArrayList;
         TracksFragment tracksFragment = getTracksFragment(mCurrentDevice);
         if (tracksFragment != null) {
-            tracksFragment.changeCurrentTrack(position, true);
+            tracksFragment.changeCurrentTrack(track, true);
         }
-        mCurrentTrack = position;
+        mCurrentTrack = track;
         mIsPaused = isPaused;
-        mAlbumTextView.setText(mTrackModelArrayList.get(position).getAlbumName());
-        mTrackTextView.setText(mTrackModelArrayList.get(position).getTrackName());
+        mAlbumTextView.setText(mTrackModelArrayList.get(track).getAlbumName());
+        mTrackTextView.setText(mTrackModelArrayList.get(track).getTrackName());
         if (mIsPaused) {
             mPlayImageView.setImageResource(android.R.drawable.ic_media_play);
             mCurrentPlayButtonId = android.R.drawable.ic_media_play;
@@ -207,7 +238,7 @@ public class MainActivity extends AppCompatActivity implements ArtistsFragment.P
             mPlayImageView.setImageResource(android.R.drawable.ic_media_pause);
             mCurrentPlayButtonId = android.R.drawable.ic_media_pause;
         }
-        Picasso.with(this).load(mTrackModelArrayList.get(position).getSmallImage()).into(mPreviewImageView);
+        Picasso.with(this).load(mTrackModelArrayList.get(track).getSmallImage()).into(mPreviewImageView);
         if (Utils.isMyServiceRunning(PlayMusicService.class, this)) {
             getApplicationContext().bindService(new Intent(this, PlayMusicService.class), mServiceConnection, Context.BIND_AUTO_CREATE);
         }
@@ -223,7 +254,7 @@ public class MainActivity extends AppCompatActivity implements ArtistsFragment.P
                     mIsBound = false;
                 }
                 mLinearLayout.setVisibility(View.GONE);
-                setUpPreviewFragment(mTrackModelArrayList, artistName, position, true, mIsPaused);
+                setUpPreviewFragment(mTrackModelArrayList, mArtistName, track, true, mIsPaused);
             }
         });
         mPlayImageView.setOnClickListener(new View.OnClickListener() {
@@ -293,8 +324,10 @@ public class MainActivity extends AppCompatActivity implements ArtistsFragment.P
         if (mPlayMusicService != null) {
             mPlayMusicService.stopUpdatingUI();
         }
-        if (Utils.isMyServiceRunning(PlayMusicService.class, this)) {
-            stopService(new Intent(this, PlayMusicService.class));
+        if (isFinishing()) {
+            if (Utils.isMyServiceRunning(PlayMusicService.class, this)) {
+                stopService(new Intent(this, PlayMusicService.class));
+            }
         }
     }
 
