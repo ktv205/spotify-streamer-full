@@ -2,7 +2,6 @@ package com.example.krishnateja.spotifystreamer.Fragments;
 
 import android.app.Activity;
 import android.content.Context;
-import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -27,7 +26,6 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.example.krishnateja.spotifystreamer.R;
-import com.example.krishnateja.spotifystreamer.models.AppConstants;
 import com.example.krishnateja.spotifystreamer.models.ArtistModel;
 import com.squareup.picasso.Picasso;
 
@@ -153,7 +151,7 @@ public class ArtistsFragment extends Fragment {
                                 if (mListView != null) {
                                     fillListView(new ArrayList<ArtistModel>());
                                 }
-                                mPassData.getArtistIdAndName(null,null);
+                                mPassData.getArtistIdAndName(null, null);
                             }
                         }
                 );
