@@ -66,15 +66,6 @@ public class ArtistsFragment extends Fragment {
         mPassData = (PassArtistData) activity;
     }
 
-    @Override
-    public void onStart() {
-        super.onStart();
-        if (mListView != null) {
-            mListView.setSelection(mArtistSelected);
-            mListView.setItemChecked(mArtistSelected, true);
-        }
-    }
-
 
     @Nullable
     @Override

@@ -139,7 +139,7 @@ public class PlayMusicService extends Service implements MediaPlayer.OnPreparedL
             }
 
         }
-        return START_STICKY;
+        return START_NOT_STICKY;
 
     }
 
