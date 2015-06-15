@@ -9,6 +9,7 @@ import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -26,6 +27,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.example.krishnateja.spotifystreamer.R;
+import com.example.krishnateja.spotifystreamer.models.AppConstants;
 import com.example.krishnateja.spotifystreamer.models.ArtistModel;
 import com.squareup.picasso.Picasso;
 
@@ -44,6 +46,7 @@ import retrofit.client.Response;
  * Created by krishnateja on 6/1/2015.
  */
 public class ArtistsFragment extends Fragment {
+    private static final String TAG =ArtistsFragment.class.getSimpleName() ;
     private ArrayList<ArtistModel> mArtistModelArrayList;
     private EditText mSearchArtistEditText;
     private String mSearchQuery;
@@ -56,7 +59,6 @@ public class ArtistsFragment extends Fragment {
 
     public interface PassArtistData {
         void getArtistIdAndName(String id, String name);
-
         void searchAgain();
     }
 
@@ -71,6 +73,7 @@ public class ArtistsFragment extends Fragment {
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         manipulateActionBar();
+        Log.d(TAG, "onCreateView");
         mView = inflater.inflate(R.layout.fragment_artists, container, false);
         mSearchArtistEditText = (EditText) mView.findViewById(R.id.search_edit_text);
         mResultsTextView = (TextView) mView.findViewById(R.id.results_text_view);
@@ -95,13 +98,18 @@ public class ArtistsFragment extends Fragment {
 
             }
         });
-        if (mSearchQuery != null && !mSearchQuery.isEmpty()) {
-            mSearchArtistEditText.setText(mSearchQuery);
-        }
         if (mArtistModelArrayList != null) {
+            fillListView(mArtistModelArrayList);
+        }else if(savedInstanceState!=null){
+            mArtistModelArrayList=savedInstanceState.getParcelableArrayList(AppConstants.BundleExtras.ARTISTS_EXTRA);
+            mSearchQuery=savedInstanceState.getString(AppConstants.BundleExtras.ARTIST_NAME_EXTRA);
+            mArtistSelected=savedInstanceState.getInt(AppConstants.BundleExtras.CURRENT_ARTIST);
             fillListView(mArtistModelArrayList);
         } else {
             mResultsTextView.setVisibility(View.VISIBLE);
+        }
+        if (mSearchQuery != null && !mSearchQuery.isEmpty()) {
+            mSearchArtistEditText.setText(mSearchQuery);
         }
         return mView;
     }
@@ -113,6 +121,21 @@ public class ArtistsFragment extends Fragment {
             actionBar.setTitle(getString(R.string.app_name));
             actionBar.setDisplayHomeAsUpEnabled(false);
         }
+    }
+
+    @Override
+    public void onActivityCreated(@Nullable Bundle savedInstanceState) {
+        super.onActivityCreated(savedInstanceState);
+    }
+
+
+
+    @Override
+    public void onSaveInstanceState(Bundle outState) {
+        outState.putParcelableArrayList(AppConstants.BundleExtras.ARTISTS_EXTRA, mArtistModelArrayList);
+        outState.putString(AppConstants.BundleExtras.ARTIST_NAME_EXTRA, mSearchQuery);
+        outState.putInt(AppConstants.BundleExtras.CURRENT_ARTIST,mArtistSelected);
+        super.onSaveInstanceState(outState);
     }
 
     @Override
@@ -286,5 +309,17 @@ public class ArtistsFragment extends Fragment {
 
             }
         });
+    }
+    public ArrayList<ArtistModel> getArtists(){
+        return mArtistModelArrayList;
+    }
+    public int getArtistSelected(){
+        return mArtistSelected;
+    }
+    public void restoreState(ArrayList<ArtistModel> artistModelArrayList,int artistSelected){
+        mArtistModelArrayList=artistModelArrayList;
+        mArtistSelected=artistSelected;
+        fillListView(mArtistModelArrayList);
+        mResultsTextView.setVisibility(View.GONE);
     }
 }

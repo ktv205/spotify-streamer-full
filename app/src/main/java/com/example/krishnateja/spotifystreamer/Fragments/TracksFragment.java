@@ -52,6 +52,7 @@ public class TracksFragment extends Fragment {
     private ListView mListView;
     private int mTrackSelected = -1;
     private String TAG = TracksFragment.class.getSimpleName();
+    private int mDeviceFlag;
 
 
     public interface PassTracksData {
@@ -77,6 +78,12 @@ public class TracksFragment extends Fragment {
         mLoadingProgressBar = (ProgressBar) mView.findViewById(R.id.progress_bar);
         mResultsTextView = (TextView) mView.findViewById(R.id.results_text_view);
 
+        if (savedInstanceState != null) {
+            mTrackModelArrayList = savedInstanceState.getParcelableArrayList(AppConstants.BundleExtras.TRACKS_EXTRA);
+            mTrackSelected = savedInstanceState.getInt(AppConstants.BundleExtras.CURRENT_TRACK);
+            mArtistName = savedInstanceState.getString(AppConstants.BundleExtras.ARTIST_NAME_EXTRA);
+            manipulateActionBar(mDeviceFlag);
+        }
         if (mTrackModelArrayList == null) {
             mResultsTextView.setVisibility(View.VISIBLE);
         } else {
@@ -86,6 +93,15 @@ public class TracksFragment extends Fragment {
         return mView;
     }
 
+    @Override
+    public void onSaveInstanceState(Bundle outState) {
+        Log.d(TAG,"onSavedInstanceState");
+        outState.putParcelableArrayList(AppConstants.BundleExtras.TRACKS_EXTRA, mTrackModelArrayList);
+        outState.putInt(AppConstants.BundleExtras.CURRENT_TRACK, mTrackSelected);
+        outState.putString(AppConstants.BundleExtras.ARTIST_NAME_EXTRA, mArtistName);
+        outState.putInt(AppConstants.BundleExtras.CURRENT_DEVICE, mDeviceFlag);
+        super.onSaveInstanceState(outState);
+    }
 
     public void manipulateActionBar(int flag) {
         ActionBar actionBar = ((AppCompatActivity) getActivity()).getSupportActionBar();
@@ -220,7 +236,7 @@ public class TracksFragment extends Fragment {
                                 Toast.makeText(getActivity(), "Please check your network connection and try again", Toast.LENGTH_SHORT).show();
                                 mLoadingProgressBar.setVisibility(View.GONE);
                                 mResultsTextView.setVisibility(View.VISIBLE);
-                                mPassTracksData.setTracksAndArtistName(null,null,-1);
+                                mPassTracksData.setTracksAndArtistName(null, null, -1);
                             }
                         }
                 );
@@ -266,4 +282,12 @@ public class TracksFragment extends Fragment {
             }
         }
     }
+    public void restoreState(ArrayList<TrackModel> tracksModelArrayList,int trackSelected,String artistName){
+        mTrackModelArrayList=tracksModelArrayList;
+        mTrackSelected=trackSelected;
+        mResultsTextView.setVisibility(View.GONE);
+        mArtistName=artistName;
+        setTrackListAdapter();
+    }
+
 }

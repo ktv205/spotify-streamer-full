@@ -17,6 +17,11 @@ public class AppConstants {
         public static final String IS_PLAYING = "is_playing";
         public static final String IS_PAUSED = "is_paused";
         public static final String DEVICE ="device";
+        public static final String IS_BOUND ="is_bound" ;
+        public static final String CURRENT_TRACK ="current_track";
+        public static final String CURRENT_PLAY_BUTTON_ID = "current_play_button_id";
+        public static final String CURRENT_DEVICE = "current_device";
+        public static final String CURRENT_ARTIST ="current_artist" ;
     }
 
     public static class FLAGS {
