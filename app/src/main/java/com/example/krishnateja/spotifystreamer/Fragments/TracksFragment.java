@@ -52,6 +52,7 @@ public class TracksFragment extends Fragment {
     private ListView mListView;
     private int mTrackSelected = -1;
     private String TAG = TracksFragment.class.getSimpleName();
+    private int mDeviceFlag;
 
 
     public interface PassTracksData {
@@ -81,6 +82,7 @@ public class TracksFragment extends Fragment {
             mTrackModelArrayList = savedInstanceState.getParcelableArrayList(AppConstants.BundleExtras.TRACKS_EXTRA);
             mTrackSelected = savedInstanceState.getInt(AppConstants.BundleExtras.CURRENT_TRACK);
             mArtistName = savedInstanceState.getString(AppConstants.BundleExtras.ARTIST_NAME_EXTRA);
+            manipulateActionBar(mDeviceFlag);
         }
         if (mTrackModelArrayList == null) {
             mResultsTextView.setVisibility(View.VISIBLE);
@@ -93,9 +95,11 @@ public class TracksFragment extends Fragment {
 
     @Override
     public void onSaveInstanceState(Bundle outState) {
+        Log.d(TAG,"onSavedInstanceState");
         outState.putParcelableArrayList(AppConstants.BundleExtras.TRACKS_EXTRA, mTrackModelArrayList);
         outState.putInt(AppConstants.BundleExtras.CURRENT_TRACK, mTrackSelected);
         outState.putString(AppConstants.BundleExtras.ARTIST_NAME_EXTRA, mArtistName);
+        outState.putInt(AppConstants.BundleExtras.CURRENT_DEVICE, mDeviceFlag);
         super.onSaveInstanceState(outState);
     }
 
@@ -278,4 +282,12 @@ public class TracksFragment extends Fragment {
             }
         }
     }
+    public void restoreState(ArrayList<TrackModel> tracksModelArrayList,int trackSelected,String artistName){
+        mTrackModelArrayList=tracksModelArrayList;
+        mTrackSelected=trackSelected;
+        mResultsTextView.setVisibility(View.GONE);
+        mArtistName=artistName;
+        setTrackListAdapter();
+    }
+
 }

@@ -16,7 +16,9 @@
             android:layout_height="wrap_content"
             android:hint="@string/search"
             android:imeOptions="actionSearch"
-            android:inputType="text" />
+            android:inputType="text"
+
+            />
 
         <ListView
             android:id="@+id/list_view"

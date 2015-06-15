@@ -27,6 +27,7 @@ import com.example.krishnateja.spotifystreamer.Fragments.PreviewFragment;
 import com.example.krishnateja.spotifystreamer.Fragments.TracksFragment;
 import com.example.krishnateja.spotifystreamer.R;
 import com.example.krishnateja.spotifystreamer.models.AppConstants;
+import com.example.krishnateja.spotifystreamer.models.ArtistModel;
 import com.example.krishnateja.spotifystreamer.models.TrackModel;
 import com.example.krishnateja.spotifystreamer.services.PlayMusicService;
 import com.example.krishnateja.spotifystreamer.utils.Utils;
@@ -56,6 +57,9 @@ public class MainActivity extends AppCompatActivity implements ArtistsFragment.P
     private String mArtistName;
     private String TAG = MainActivity.class.getSimpleName();
     private boolean mIsSavedInstanceCalled = false;
+    private ArrayList<ArtistModel> mArtistModelArrayList;
+    private int mArtistSelected;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -63,37 +67,14 @@ public class MainActivity extends AppCompatActivity implements ArtistsFragment.P
         setContentView(R.layout.activity_main);
         mIsSavedInstanceCalled = false;
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_HIDDEN);
         initViewObjects();
-        ArtistsFragment artistsFragment = (ArtistsFragment) getSupportFragmentManager().findFragmentById(R.id.fragment_artists);
-        if (artistsFragment == null) {
-            mCurrentDevice = AppConstants.FLAGS.PHONE_FLAG;
-            artistsFragment = new ArtistsFragment();
-            FragmentTransaction fragmentTransaction = getSupportFragmentManager()
-                    .beginTransaction();
-            fragmentTransaction.replace(R.id.container_frame_layout, artistsFragment, ARTIST_TAG)
-                    .commit();
-        } else {
-            mCurrentDevice = AppConstants.FLAGS.TABLET_FLAG;
-        }
-
-        getSupportFragmentManager().addOnBackStackChangedListener(new FragmentManager.OnBackStackChangedListener() {
-            @Override
-            public void onBackStackChanged() {
-                TracksFragment tracksFragment = getTracksFragment(mCurrentDevice);
-                ArtistsFragment artistsFragment = getArtistsFragment(mCurrentDevice);
-                if (tracksFragment != null && tracksFragment.isVisible()) {
-                    tracksFragment.manipulateActionBar(AppConstants.FLAGS.PHONE_FLAG);
-                    tracksFragment.changeCurrentTrack(mCurrentTrack, true);
-                }
-                if (artistsFragment != null && artistsFragment.isVisible()) {
-                    artistsFragment.manipulateActionBar();
-                }
-            }
-        });
         if (savedInstanceState != null) {
             mCurrentArtistId = savedInstanceState.getString(AppConstants.BundleExtras.ARTIST_ID_EXTRA);
             mCurrentDevice = savedInstanceState.getInt(AppConstants.BundleExtras.CURRENT_DEVICE);
             mIsBound = savedInstanceState.getBoolean(AppConstants.BundleExtras.IS_BOUND);
+            mArtistModelArrayList = savedInstanceState.getParcelableArrayList(AppConstants.BundleExtras.ARTISTS_EXTRA);
+            mArtistSelected = savedInstanceState.getInt(AppConstants.BundleExtras.CURRENT_ARTIST);
             if (mIsBound) {
                 mTrackModelArrayList = savedInstanceState.getParcelableArrayList(AppConstants.BundleExtras.TRACKS_EXTRA);
                 mCurrentTrack = savedInstanceState.getInt(AppConstants.BundleExtras.CURRENT_TRACK);
@@ -102,12 +83,47 @@ public class MainActivity extends AppCompatActivity implements ArtistsFragment.P
                 mArtistName = savedInstanceState.getString(AppConstants.BundleExtras.ARTIST_NAME_EXTRA);
                 updateInfoBar(mTrackModelArrayList, mCurrentTrack, mArtistName, mIsPaused, mCurrentPosition);
             }
+        } else {
+            ArtistsFragment artistsFragment = (ArtistsFragment) getSupportFragmentManager().findFragmentById(R.id.fragment_artists);
+            if (artistsFragment == null) {
+                mCurrentDevice = AppConstants.FLAGS.PHONE_FLAG;
+                artistsFragment = new ArtistsFragment();
+                FragmentTransaction fragmentTransaction = getSupportFragmentManager()
+                        .beginTransaction();
+                fragmentTransaction.replace(R.id.container_frame_layout, artistsFragment, ARTIST_TAG)
+                        .commit();
+            } else {
+                mCurrentDevice = AppConstants.FLAGS.TABLET_FLAG;
+            }
         }
+
+        getSupportFragmentManager().addOnBackStackChangedListener(new FragmentManager.OnBackStackChangedListener() {
+            @Override
+            public void onBackStackChanged() {
+                TracksFragment tracksFragment = getTracksFragment(mCurrentDevice);
+                ArtistsFragment artistsFragment = getArtistsFragment(mCurrentDevice);
+                if (tracksFragment != null && tracksFragment.isVisible()) {
+                    if (mTrackModelArrayList != null) {
+                        tracksFragment.restoreState(mTrackModelArrayList, mCurrentTrack, mArtistName);
+                    }
+                    tracksFragment.changeCurrentTrack(mCurrentTrack, true);
+                    tracksFragment.manipulateActionBar(AppConstants.FLAGS.PHONE_FLAG);
+
+                }
+                if (artistsFragment != null && artistsFragment.isVisible()) {
+                    artistsFragment.manipulateActionBar();
+                    if (mArtistModelArrayList != null) {
+                        artistsFragment.restoreState(mArtistModelArrayList, mArtistSelected);
+                    }
+                }
+            }
+        });
+
     }
 
     @Override
     protected void onSaveInstanceState(Bundle outState) {
-        mIsSavedInstanceCalled=true;
+        mIsSavedInstanceCalled = true;
         Log.d(TAG, "onSavedInstanceState");
         outState.putBoolean(AppConstants.BundleExtras.IS_BOUND, mIsBound);
         outState.putInt(AppConstants.BundleExtras.CURRENT_TRACK, mCurrentTrack);
@@ -118,6 +134,8 @@ public class MainActivity extends AppCompatActivity implements ArtistsFragment.P
         outState.putBoolean(AppConstants.BundleExtras.IS_PAUSED, mIsPaused);
         outState.putString(AppConstants.BundleExtras.ARTIST_NAME_EXTRA, mArtistName);
         outState.putParcelableArrayList(AppConstants.BundleExtras.TRACKS_EXTRA, mTrackModelArrayList);
+        outState.putParcelableArrayList(AppConstants.BundleExtras.ARTISTS_EXTRA, mArtistModelArrayList);
+        outState.putInt(AppConstants.BundleExtras.CURRENT_ARTIST, mArtistSelected);
         super.onSaveInstanceState(outState);
     }
 
@@ -148,6 +166,11 @@ public class MainActivity extends AppCompatActivity implements ArtistsFragment.P
 
     @Override
     public void getArtistIdAndName(String id, String name) {
+        ArtistsFragment artistsFragment = getArtistsFragment(mCurrentDevice);
+        if (artistsFragment != null) {
+            mArtistModelArrayList = artistsFragment.getArtists();
+            mArtistSelected = artistsFragment.getArtistSelected();
+        }
         if (id == null && name == null) {
             mCurrentArtistId = null;
         } else {
@@ -162,9 +185,17 @@ public class MainActivity extends AppCompatActivity implements ArtistsFragment.P
                 getSupportFragmentManager().executePendingTransactions();
             }
             if (mCurrentArtistId == null
-                    || !mCurrentArtistId.equals(id)
-                    || mCurrentDevice != AppConstants.FLAGS.TABLET_FLAG) {
+                    || !mCurrentArtistId.equals(id)) {
                 tracksFragment.onLoadData(id, name, mCurrentDevice);
+            } else if (mCurrentArtistId != null
+                    && mCurrentArtistId.equals(id)
+                    && mCurrentDevice == AppConstants.FLAGS.PHONE_FLAG) {
+                if (mTrackModelArrayList != null) {
+                    Log.d(TAG, "tracks not null");
+                    tracksFragment.restoreState(mTrackModelArrayList, mCurrentTrack, mArtistName);
+                }else{
+                    tracksFragment.onLoadData(id,name,mCurrentDevice);
+                }
             }
             mCurrentArtistId = id;
         }
@@ -191,6 +222,9 @@ public class MainActivity extends AppCompatActivity implements ArtistsFragment.P
 
 
     private void setUpPreviewFragment(ArrayList<TrackModel> trackModelArrayList, String artistName, int position, boolean isPlaying, boolean isPaused) {
+        mTrackModelArrayList=trackModelArrayList;
+        mArtistName=artistName;
+        mCurrentTrack=position;
         Bundle bundle = new Bundle();
         bundle.putParcelableArrayList(AppConstants.BundleExtras.TRACKS_EXTRA, trackModelArrayList);
         bundle.putString(AppConstants.BundleExtras.ARTIST_NAME_EXTRA, artistName);
@@ -217,7 +251,6 @@ public class MainActivity extends AppCompatActivity implements ArtistsFragment.P
     public void removeInfoBar() {
         mLinearLayout.setVisibility(View.GONE);
         if (mIsBound) {
-            Log.d(TAG, "unbinding in mainactivity");
             getApplicationContext().unbindService(mServiceConnection);
             getApplicationContext().stopService(new Intent(this, PlayMusicService.class));
             mIsBound = false;
@@ -246,7 +279,6 @@ public class MainActivity extends AppCompatActivity implements ArtistsFragment.P
         }
         Picasso.with(this).load(mTrackModelArrayList.get(track).getSmallImage()).into(mPreviewImageView);
         if (Utils.isMyServiceRunning(PlayMusicService.class, this) && !mIsSavedInstanceCalled) {
-            Log.d(TAG, "binding in mainactivity");
             getApplicationContext().bindService(new Intent(this, PlayMusicService.class), mServiceConnection, Context.BIND_AUTO_CREATE);
         }
         mLinearLayout.setVisibility(View.VISIBLE);
@@ -309,8 +341,6 @@ public class MainActivity extends AppCompatActivity implements ArtistsFragment.P
     ServiceConnection mServiceConnection = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
-            Log.d(TAG, "service Connected");
-
             PlayMusicService.LocalBinder binder = (PlayMusicService.LocalBinder) service;
             mPlayMusicService = binder.getService();
             mIsBound = true;
@@ -326,9 +356,7 @@ public class MainActivity extends AppCompatActivity implements ArtistsFragment.P
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        Log.d(TAG, "onDestroy");
         if (mIsBound) {
-            Log.d(TAG, "unbinding in mainactivity");
             getApplicationContext().unbindService(mServiceConnection);
             mIsBound = false;
         }
